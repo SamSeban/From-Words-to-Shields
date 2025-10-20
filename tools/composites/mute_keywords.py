@@ -22,12 +22,12 @@ class MuteKeywords(PrivacyTool):
         Returns:
             { "audio_path": "data/results/REPLACE_WITH_MUTED_AUDIO_PATH" }
         """
-        # Example (future) usage:
-        # detect = get("detect_keywords")
-        # mute   = get("mute_segments")
-        # segs   = detect.apply(audio_path=audio_path, keywords=keywords, asr=asr)
-        # out    = mute.apply(audio_path=audio_path, segments_path=segs["segments_path"], mode=mode)
-        return {"audio_path": "data/results/REPLACE_WITH_MUTED_AUDIO_PATH"}
+        # Call detect_keywords to find keyword timestamps
+        detect = get("detect_keywords")
+        mute   = get("mute_segments")
+        segs   = detect.apply(audio_path=audio_path, keywords=keywords, asr=asr)
+        out    = mute.apply(audio_path=audio_path, segments_path=segs["segments_path"], mode=mode)
+        return out
 
     def verify(self, **kwargs):
         """Optionally re-run ASR and confirm keywords are no longer audible/textual."""

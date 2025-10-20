@@ -1,0 +1,12 @@
+# Core ASR and speech processing
+openai-whisper>=20231117
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Audio processing and manipulation
+pydub>=0.25.1
+librosa>=0.10.0
+soundfile>=0.12.1
+
+# General utilities
+pathlib2>=2.3.7; python_version<"3.4"

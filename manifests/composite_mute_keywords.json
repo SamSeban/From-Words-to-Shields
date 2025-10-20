@@ -9,7 +9,7 @@
           "medical"
         ],
         "asr": "whisper",
-        "mode": "silence"
+        "mode": "beep"
       }
     }
   ]
