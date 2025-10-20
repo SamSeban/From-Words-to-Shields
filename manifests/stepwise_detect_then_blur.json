@@ -1,0 +1,19 @@
+{
+  "pipeline": [
+    {
+      "tool": "detect_faces",
+      "args": {
+        "video_path": "data/samples/street.mp4",
+        "detector": "haar"
+      }
+    },
+    {
+      "tool": "blur",
+      "args": {
+        "video_path": "data/samples/street.mp4",
+        "mask_stream_path": "$prev.mask_stream_path",
+        "kernel": 31
+      }
+    }
+  ]
+}
