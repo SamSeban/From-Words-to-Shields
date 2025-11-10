@@ -10,3 +10,6 @@ soundfile>=0.12.1
 
 # General utilities
 pathlib2>=2.3.7; python_version<"3.4"
+
+# open cv
+opencv-python==4.10.0
