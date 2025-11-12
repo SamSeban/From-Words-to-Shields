@@ -2,7 +2,11 @@ import os
 from groq import Groq
 from dotenv import load_dotenv
 import json
-import time 
+import time
+try:
+    from .tool_generator import generate_custom_tool
+except ImportError:
+    from tool_generator import generate_custom_tool 
 
 
 load_dotenv()
@@ -93,6 +97,8 @@ class PipelinePlanner():
 
         if file_path:
             user_request += f"\nFile: {file_path}"
+            
+        # First attempt to generate manifest
         response = self.client.chat.completions.create(
             model= self.model,
             messages=[
@@ -104,7 +110,133 @@ class PipelinePlanner():
         )
 
         manifest = json.loads(response.choices[0].message.content)
+        
+        # Check if this is an error response for unavailable tool
+        if "error" in manifest and "not available" in manifest["error"]:
+            try:
+                # Extract the tool name from the error message
+                error_msg = manifest["error"]
+                # Look for pattern like "Tool 'X' not available"
+                import re
+                tool_match = re.search(r"Tool '([^']+)' not available", error_msg)
+                if tool_match:
+                    requested_tool = tool_match.group(1)
+                    available_tools = manifest.get("available_tools", [])
+                    
+                    print(f"Attempting to generate custom tool: {requested_tool}")
+                    
+                    # Generate the custom tool
+                    generation_result = generate_custom_tool(user_request, available_tools)
+                    
+                    if generation_result.get("success"):
+                        print(f"Successfully generated tool: {generation_result['tool_name']}")
+                        
+                        # Update the system prompt to include the new tool
+                        new_system_prompt = self._update_system_prompt_with_new_tool(
+                            generation_result['tool_name'], user_request
+                        )
+                        
+                        print(f"🔄 Retrying manifest generation with new tool available...")
+                        
+                        # Retry generating the manifest with the new tool available
+                        retry_response = self.client.chat.completions.create(
+                            model=self.model,
+                            messages=[
+                                {'role': 'system', 'content': new_system_prompt},
+                                {'role': 'user', 'content': user_request}
+                            ],
+                            temperature=0.1,
+                            response_format={"type": "json_object"}
+                        )
+                        
+                        retry_manifest = json.loads(retry_response.choices[0].message.content)
+                        return retry_manifest
+                    else:
+                        # If tool generation failed, return an error
+                        return {
+                            "error": f"Failed to generate custom tool '{requested_tool}': {generation_result.get('error', 'Unknown error')}"
+                        }
+                        
+            except Exception as e:
+                # If anything goes wrong in tool generation, return the original error
+                return {
+                    "error": f"Tool generation failed: {str(e)}. Original error: {manifest['error']}"
+                }
+        
         return manifest
+    
+    def _update_system_prompt_with_new_tool(self, tool_name: str, user_request: str) -> str:
+        """Update the system prompt to include the newly generated tool."""
+        # Create a basic tool description based on the user request
+        tool_description = self._infer_tool_description(tool_name, user_request)
+        
+        # Insert the new tool into the AVAILABLE TOOLS section
+        lines = SYSTEM_PROMPT.split('\n')
+        
+        # Find where to insert the new tool (after the existing tools)
+        insert_index = -1
+        for i, line in enumerate(lines):
+            if "6. mute_keywords - Mute keywords in audio (composite tool)" in line:
+                insert_index = i + 1
+                break
+        
+        if insert_index > 0:
+            # Insert the new tool description with proper arguments
+            if "background" in tool_name.lower():
+                new_tool_line = f"\n7. {tool_name} - {tool_description}"
+                new_tool_line += f"\n   Args: video_path (str)"
+                new_tool_line += f"\n   Returns: output_video_path (processed video)"
+            elif "transcribe" in tool_name.lower():
+                new_tool_line = f"\n7. {tool_name} - {tool_description}"
+                new_tool_line += f"\n   Args: audio_path (str)"
+                new_tool_line += f"\n   Returns: transcription (text)"
+            else:
+                new_tool_line = f"\n7. {tool_name} - {tool_description}"
+                new_tool_line += f"\n   Args: video_path (str) or audio_path (str)"
+                new_tool_line += f"\n   Returns: output_path (processed file)"
+            
+            lines.insert(insert_index, new_tool_line)
+            
+            # Update the existing tool list to include this new tool in relevant contexts
+            updated_prompt = '\n'.join(lines)
+            
+            # Update multiple references to available tools lists
+            tool_lists_to_update = [
+                ('"available_tools": ["blur_faces", "detect_faces", "blur"]',
+                 f'"available_tools": ["blur_faces", "detect_faces", "blur", "{tool_name}"]'),
+                ('ONLY use tools from the list above',
+                 f'ONLY use tools from the list above (including newly available: {tool_name})'),
+            ]
+            
+            for old_text, new_text in tool_lists_to_update:
+                updated_prompt = updated_prompt.replace(old_text, new_text)
+            
+            return updated_prompt
+        
+        return SYSTEM_PROMPT
+    
+    def _infer_tool_description(self, tool_name: str, user_request: str) -> str:
+        """Infer tool description based on the tool name and user request."""
+        request_lower = user_request.lower()
+        
+        if "license plate" in request_lower:
+            return "Detect and blur license plates in video"
+        elif "transcribe" in request_lower:
+            return "Transcribe audio to text"
+        elif "text" in request_lower and ("detect" in request_lower or "blur" in request_lower):
+            return "Detect and blur text in video"
+        elif "object" in request_lower:
+            return "Detect and blur objects in video"
+        elif "background" in request_lower:
+            return "Remove or blur background in video"
+        else:
+            # Generic description
+            if "detect" in tool_name.lower():
+                return f"Custom detection tool for {user_request.lower()}"
+            elif any(word in tool_name.lower() for word in ["blur", "mute", "remove"]):
+                return f"Custom privacy protection tool for {user_request.lower()}"
+            else:
+                return f"Custom tool for {user_request.lower()}"
     
     def save_manifest(self, manifest: dict, output_path: str):
         with open(output_path, 'w') as f:

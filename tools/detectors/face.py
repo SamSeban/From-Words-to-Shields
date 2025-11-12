@@ -72,8 +72,6 @@ class DetectFaces(PrivacyTool):
         frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        video_num = int(video_path[23]) - 1
-        # print(f"[INFO] {os.path.basename(video_path)} | {width}x{height} | {fps:.2f} FPS | {frame_count} frames | description: {video_description[video_num]}")
 
         # Load YuNet detector
         model_path = os.path.abspath(

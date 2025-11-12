@@ -1,6 +1,7 @@
 """Composite: detect faces then blur (placeholder flow only)."""
 
 from tool_api import PrivacyTool
+from registry import register
 
 class BlurFaces(PrivacyTool):
     name = "blur_faces"
@@ -39,17 +40,5 @@ class BlurFaces(PrivacyTool):
     def verify(self, **kwargs):
         return {"ok": True}
 
-if __name__ == "__main__":
-    # Import registry first to populate it
-    import registry
-    from registry import register, get
-    
-    # Create and register the tool
-    TOOL = BlurFaces()
-    register(TOOL)
-    
-    # Debug: print what's registered
-    print(f"Registered tools: {list(registry.TOOLS.keys())}")
-    
-    result = TOOL.apply(video_path='/home/daniel/Downloads/2.mp4')
-    print(f"Result: {result}")
+TOOL = BlurFaces()
+register(TOOL)
