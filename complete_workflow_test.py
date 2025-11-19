@@ -30,7 +30,7 @@ def get_test_files():
     video_files = [f for f in os.listdir(videos_dir) if f.endswith('.mp4')]
     return sorted(video_files)
 
-def execute_pipeline(manifest, base_path="/home/sam/Documents/GitHub/From-Words-to-Shields"):
+def execute_pipeline(manifest, file_path=None, base_path=None):
     """Execute the generated pipeline and return results."""
     
     if "error" in manifest:
@@ -50,7 +50,7 @@ def execute_pipeline(manifest, base_path="/home/sam/Documents/GitHub/From-Words-
     
     for i, step in enumerate(manifest["pipeline"], 1):
         tool_name = step.get("tool")
-        args = step.get("args", {})
+        args = step.get("args", {}).copy()  # Make a copy to avoid modifying the manifest
         
         print(f"Step {i}: Executing '{tool_name}'")
         
@@ -58,6 +58,24 @@ def execute_pipeline(manifest, base_path="/home/sam/Documents/GitHub/From-Words-
         tool = registry.get(tool_name)
         if not tool:
             return {"error": f"Tool '{tool_name}' not found in registry"}
+        
+        # Inject file_path if provided and tool needs it
+        if file_path:
+            # Determine whether this is a video or audio file based on file extension
+            file_ext = os.path.splitext(file_path)[1].lower()
+            video_exts = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv']
+            audio_exts = ['.wav', '.mp3', '.flac', '.aac', '.ogg', '.m4a']
+            
+            # Inject appropriate file path based on file extension
+            # This works for both known and dynamically generated tools
+            if file_ext in video_exts:
+                if 'video_path' not in args:  # Only inject if not already specified
+                    args['video_path'] = file_path
+                    print(f"  Injected video_path: {file_path}")
+            elif file_ext in audio_exts:
+                if 'audio_path' not in args:  # Only inject if not already specified
+                    args['audio_path'] = file_path
+                    print(f"  Injected audio_path: {file_path}")
         
         # Replace $prev references with actual values from previous step
         if previous_result:
@@ -154,7 +172,7 @@ def interactive_mode():
                     else:
                         file_path = file_input
                 else:
-                    file_path = f"{project_root}/data/samples/4.mp4"
+                    file_path = f"{project_root}/data/samples/273922_large.mp4"
                 
                 if not os.path.exists(file_path):
                     print(f"ERROR: File not found: {file_path}")
@@ -191,7 +209,7 @@ def run_complete_workflow(prompt, file_path=None, planner=None):
     try:
         # Step 1: Generate manifest (may trigger tool generation)
         print("Step 1: Generating manifest...")
-        manifest = planner.plan(prompt, file_path)
+        manifest = planner.plan(prompt)
         
         planning_time = time.time() - start_time
         print(f"Planning completed in {planning_time:.2f} seconds")
@@ -207,7 +225,7 @@ def run_complete_workflow(prompt, file_path=None, planner=None):
         print("\nStep 2: Executing generated pipeline...")
         execution_start = time.time()
         
-        execution_results = execute_pipeline(manifest)
+        execution_results = execute_pipeline(manifest, file_path)
         
         execution_time = time.time() - execution_start
         total_time = time.time() - start_time

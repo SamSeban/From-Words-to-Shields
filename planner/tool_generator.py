@@ -34,6 +34,9 @@ CRITICAL REQUIREMENTS:
 - Use existing file patterns (data/results/ for outputs)
 - Generate working, runnable code
 
+IMPORTANT: DO NOT include file path arguments (video_path, audio_path, input_path) in the apply() method.
+File paths are injected at runtime by the execution system. Your tool should expect other parameters only.
+
 AVAILABLE LIBRARIES AND THEIR USES:
 - cv2: Video/image processing, face detection, object detection, image transformations
 - numpy: Array operations, mathematical computations
@@ -55,7 +58,15 @@ class YourCustomTool(PrivacyTool):
     name = "your_tool_name"
     
     def apply(self, **kwargs) -> Dict[str, Any]:
-        \"\"\"Apply the privacy protection operation.\"\"\"
+        \"\"\"Apply the privacy protection operation.
+        
+        NOTE: File paths (video_path/audio_path) are automatically injected by the execution system.
+        Do not expect them as explicit parameters - they will be available in kwargs.
+        \"\"\"
+        # Get file path from kwargs (injected at runtime)
+        video_path = kwargs.get('video_path')  # for video tools
+        audio_path = kwargs.get('audio_path')  # for audio tools
+        
         # Implementation here
         # Return dict with results
         return {{"output_path": "...", "summary": {{}}}}

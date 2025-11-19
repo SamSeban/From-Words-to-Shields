@@ -3,7 +3,6 @@
     {
       "tool": "blur_faces",
       "args": {
-        "video_path": "data/samples/street.mp4",
         "kernel": 31,
         "detector": "haar"
       }

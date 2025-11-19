@@ -3,7 +3,6 @@
     {
       "tool": "mute_keywords",
       "args": {
-        "audio_path": "data/samples/speech.wav",
         "keywords": [
           "address",
           "medical"

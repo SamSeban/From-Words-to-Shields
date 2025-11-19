@@ -1,0 +1,10 @@
+{
+  "pipeline": [
+    {
+      "tool": "remove_background",
+      "args": {
+        "background_option": "blur"
+      }
+    }
+  ]
+}
