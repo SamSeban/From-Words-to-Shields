@@ -10,42 +10,36 @@ from registry import register
 class DetectFaces(PrivacyTool):
     name = "detect_faces"
 
-    def make_kalman_filter(x, y, w, h):
-        """Create a 12D Kalman filter for position, velocity, and acceleration."""
-
-        # Now the kalman filter predicts takes also position. However people's movement is usually
-        # without acceleration -> can change it to 8D (remove acceleration row) to make it (maybe) faster
-        # and (maybe) more robust (less stuff to predict, less mistakes). From a first quick check, the results are
-        # very similar
-        kf = cv2.KalmanFilter(12, 4)
+    def make_kalman_filter(self, x, y, w, h):
+        # position and velocity. x(t) = x(t-1) + V(t-1)*dt; V(t) = V(t-1)
+        kf = cv2.KalmanFilter(8, 4)
         dt = 1.0
-        kf.transitionMatrix = np.eye(12, dtype=np.float32)
-        # set coeffs. the transition matrix is [x, y, w, h; vx, vy, vw, vh; ax, ay, aw, ah;]
+        kf.transitionMatrix = np.eye(8, dtype=np.float32)
+        # A is 8x8. Constant Velocity Model: x(t) = x(t-1) + v(t-1)*dt; v(t) = v(t-1)
         for i in range(4):
-            kf.transitionMatrix[i, i + 4] = dt
-            kf.transitionMatrix[i, i + 8] = 0.5 * dt * dt
-            kf.transitionMatrix[i + 4, i + 8] = dt
-
-        kf.measurementMatrix = np.zeros((4, 12), np.float32)
+            kf.transitionMatrix [i, i + 4] = dt
+        # H is 4x8. Measurement only observes the position (x, y, w, h)
+        kf.measurementMatrix = np.zeros((4, 8), np.float32)
         for i in range(4):
-            kf.measurementMatrix[i][i] = 1.0
-
-        # Process and measurement noise. These values can be tuned, and higher values make the filter
-        # more aggressive
-        kf.processNoiseCov = np.eye(12, dtype=np.float32)
-        kf.processNoiseCov[:4, :4] *= 0.01
-        kf.processNoiseCov[4:8, 4:8] *= 0.5
-        kf.processNoiseCov[8:12, 8:12] *= 2.0
-        kf.measurementNoiseCov = np.eye(4, dtype=np.float32) * 0.1
-
+            kf.measurementMatrix[i, i] = 1.0
+        # Increase Q_vel to make prediction less confident, reducing aggression/overshoot.
+        kf.processNoiseCov = np.eye(8, dtype=np.float32)
+        # Position Noise (x, y, w, h): Very low confidence in position change without velocity
+        kf.processNoiseCov[:4, :4] *= 0.01 
+        
+        # Velocity Noise (vx, vy, vw, vh): High confidence in velocity change (introducing "jerk")
+        kf.processNoiseCov[4:8, 4:8] *= 1.0
+        # Decrease R to make the filter trust the incoming KCF/Detector measurement more.
+        kf.measurementNoiseCov = np.eye(4, dtype=np.float32) * 0.05
+        # Initial state (position is known, velocity is zero)
         kf.statePost = np.array(
-            [[x], [y], [w], [h], [0], [0], [0], [0], [0], [0], [0], [0]], np.float32
+            [[x], [y], [w], [h], [0], [0], [0], [0]], np.float32
         )
-        kf.errorCovPost = np.eye(12, dtype=np.float32)
+        kf.errorCovPost = np.eye(8, dtype=np.float32)
         return kf
 
 
-    def apply(self, video_path: str, visualize=False, detect_interval=3, scale=None):
+    def apply(self, video_path: str, visualize=True, detect_interval=3, scale=None):
         """Detect faces using YuNet + Tracker + Kalman hybrid system.
         The logic is: according to the detect interval, if the detectors didnt fail too many times in a row
         (in that case we believe there is nobody), and if the kalman filter is old -> detect. Otherwise, use a tracker
@@ -64,14 +58,18 @@ class DetectFaces(PrivacyTool):
             np.allclose(first_frame[..., 0], first_frame[..., 1])
             and np.allclose(first_frame[..., 1], first_frame[..., 2])
         )
-        
-        video_description = ['grayscale', 'dude ringing bell', 'delivery guy', 'kid 1', 'dude at entrance',
-                              'dude walking towards camera', 'kid 2', 'delivery 2 black lady', 'kid 3'] # just to match video and number in testing
 
         fps = cap.get(cv2.CAP_PROP_FPS)
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+        # Output path
+        os.makedirs("data/results", exist_ok=True)
+        filename = os.path.basename(video_path)
+        output_path = os.path.join("data/results", f"detected_{filename}")
+
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
         # Load YuNet detector
         model_path = os.path.abspath(
@@ -94,11 +92,10 @@ class DetectFaces(PrivacyTool):
 
         #  Config parameters
         max_size = 780
-        kalman_predict_limit = 6  # fallback for tracker fail, max number of consecutive kalman prediction. Can be tuned
+        kalman_predict_limit = 30  # fallback for tracker fail, max number of consecutive kalman prediction. Can be tuned
         frame_idx = 0
 
         trackers = None
-        # kf_filters, kf_ages = [], []
         kf_filters = []
         #  Metrics
         total_detects, frames_with_faces, frames_no_faces = 0, 0, 0
@@ -123,15 +120,23 @@ class DetectFaces(PrivacyTool):
             scale = min(max_size / max(orig_h, orig_w), 1.0)
             resized_frame = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
 
+            kalman_predictions = []
+            for kf in kf_filters:
+                pred = kf.predict()
+                kalman_predictions.append((
+                    int(pred[0, 0]), int(pred[1, 0]), 
+                    int(pred[2, 0]), int(pred[3, 0])
+                ))
+
             # decide when to detect: 1) if the frame is in the detect interval, 2) if the detector fails less than twice again 
             # and there is no tracker on, 3) if the kalman filter is "old" and it's prediction is not very trustworthy anymore
             do_detect = (
                 (frame_idx % detect_interval == 0)
                 or (consecutive_non_detections < 2 and trackers is None) # Add a controlled check
-                or predict_counter >= kalman_predict_limit
+                or (predict_counter >= kalman_predict_limit)
             )
 
-            if do_detect:
+            if do_detect:       
                 # check if its grayscale just when detecting, not for each frame. Use clahe to improve contrast
                 if is_grayscale:                    
                     gray = cv2.cvtColor(resized_frame, cv2.COLOR_BGR2GRAY)
@@ -141,45 +146,76 @@ class DetectFaces(PrivacyTool):
                     clahe_frame = cv2.addWeighted(clahe_frame, 1.8, gaussian, -0.8, 0)
                     resized_frame = cv2.cvtColor(np.clip(clahe_frame, 0, 255).astype(np.uint8), cv2.COLOR_GRAY2BGR)
                 
-                total_detects += 1
-                kalman_detections = 0
-
+                total_detects += 1               
                 detector.setInputSize((resized_frame.shape[1], resized_frame.shape[0]))
                 _, faces = detector.detect(resized_frame)
-
                 
                 face_boxes = []
 
-
                 if faces is not None and len(faces) > 0:
+                    kalman_detections = 0
                     consecutive_non_detections = 0
                     predict_counter = 0
-                    # when find face, add tracker, and create a new empty kalman filter 
+                    # when find face, add tracker and create a new empty kalman filter 
                     trackers = cv2.legacy.MultiTracker_create()
                     new_kf_filters = []
-                    for face in faces:
+                    for i, face in enumerate(faces):
                         x, y, w, h = face[:4]
                         x, y, w, h = [int(v / scale) for v in (x, y, w, h)]
-                        box = (x, y, w, h)
+                        # if there are kalman filters, correct them with the current measurement
+                        if i < len(kf_filters):  
+                            kf = kf_filters[i]
+                            meas = np.array([[float(x)], [float(y)], [float(w)], [float(h)]], np.float32)
+                            est = kf.correct(meas)
+                            x_cor = int(est[0, 0])
+                            y_cor = int(est[1, 0])
+                            w_cor = int(est[2, 0])
+                            h_cor = int(est[3, 0])
+                            box = (x_cor, y_cor, w_cor, h_cor)
+                            new_kf_filters.append(kf)
+                        else:
+                            box = (x, y, w, h)
+                            new_kf_filters.append(self.make_kalman_filter(float(x), float(y), float(w), float(h)))
                         face_boxes.append(box)
                         # link tracker and kalman to the face
                         trackers.add(cv2.legacy.TrackerKCF_create(), frame, box)
-                        new_kf_filters.append(DetectFaces.make_kalman_filter(float(x), float(y), float(w), float(h)))
                     kf_filters = new_kf_filters
                     detection = {"frame": frame_idx, "boxes": face_boxes, "source": "detector"}
+                    success = True
                 else:
+                    # --- DETECTOR FAILED, CHECK KALMAN FALLBACK ---
                     consecutive_non_detections += 1
                     no_face_in_frame += 1
                     missed_detections += 1
-                    face_boxes = []
-
+                    
+                    # Fixed this bug: if in some previous frame there was a detection and we are not over the kalman limit
+                    # we use a kalman filter to predict the face position. The previous issue was that for a missing detection
+                    # we'd have simply an empty frame, leading to blinking
+                    if len(kf_filters) > 0 and predict_counter < kalman_predict_limit:
+                        kalman_only_frames += 1
+                        predict_counter += 1
+                        face_boxes = kalman_predictions
+                        detection = {"frame": frame_idx, "boxes": face_boxes, "source": "kalman"}
+                        
+                        # Keep tracker and kf_filters active
+                        success = True
+                    else:
+                        # Detector failed and (no Kalman filters OR Kalman limit reached)
+                        # FIXED: Clear trackers and filters when limit is exceeded
+                        # Clear all tracking state
+                        trackers = None
+                        kf_filters = []
+                        kalman_predictions = []
+                        predict_counter = 0
+                        success = False
+                        face_boxes = [] # Causes the blink/failure log
+                        detection = {"frame": frame_idx, "boxes": face_boxes, "source": "detector_failed"}
             else:
-                # TRACKING PHASE
+                # --- TRACKING / KALMAN PHASE ---
                 if trackers is not None:
                     success, tracked_boxes = trackers.update(frame)
                 else:
-                    success, tracked_boxes = False, []
-
+                    success, tracked_boxes = False, [] # No tracker to update
                 if success:
                     # use tracker, set the kalman detections to 0
                     kalman_detections = 0
@@ -188,60 +224,56 @@ class DetectFaces(PrivacyTool):
                         x_meas, y_meas, w_meas, h_meas = tb
                         if i < len(kf_filters): # if less tracked boxes than kalman filter, use kalman filter
                             kf = kf_filters[i]
-                            kf.predict()
                             meas = np.array([[x_meas], [y_meas], [w_meas], [h_meas]], np.float32)
                             est = kf.correct(meas)
                             x, y, w, h = est[0, 0], est[1, 0], est[2, 0], est[3, 0]
                             face_boxes.append((int(x), int(y), int(w), int(h)))
-                            
                         else: # otherwise just use the tracker
                             face_boxes.append((int(x_meas), int(y_meas), int(w_meas), int(h_meas)))
-                        if len(face_boxes) > 0: # record data
-                            detection  = {"frame": frame_idx, "boxes": face_boxes, "source": "tracker"}
+                    detection  = {"frame": frame_idx, "boxes": face_boxes, "source": "tracker"}
                     tracker_recoveries += 1
-
-                elif consecutive_non_detections < 3:
-                    #  TRACKER FAILED → use Kalman predictions temporarily
-                    
+                # --- tracking failed, but still within limit: rely only on kf_filters presence and predict_counter ---
+                elif len(kf_filters) > 0 and predict_counter < kalman_predict_limit:
                     kalman_detections += 1
-                    # predict_mode = True
                     predict_counter += 1
-                    # print(f"Frame {frame_idx}: Tracker Failed. KF filters count: {len(kf_filters)}. Predict Counter: {predict_counter}, consecutive non detections: {consecutive_non_detections}")
                     kalman_only_frames += 1
+                    face_boxes = kalman_predictions
+                    detection = {"frame": frame_idx, "boxes": face_boxes, "source": "kalman", "outcome": "success"}
+                elif predict_counter >= kalman_predict_limit:
+                    # Tracker failed, no Kalman filters, or Kalman limit reached
+                    # Clear tracking state when limit is exceeded           
+                    trackers = None
+                    kf_filters = []
+                    predict_counter = 0                    
                     face_boxes = []
-                    for i, kf in enumerate(kf_filters):
-                        pred = kf.predict()
-                        x, y, w, h = pred[0, 0], pred[1, 0], pred[2, 0], pred[3, 0]
-                        face_boxes.append((int(x), int(y), int(w), int(h)))
-                        
-                    if len(face_boxes) > 0:
-                        detection = {"frame": frame_idx, "boxes": face_boxes, "source": "kalman", "outcome": "success"}
-                    else:
-        
-                        detection = {"frame": frame_idx, "boxes": face_boxes, "source": "kalman", "outcome": "failed"}
-            # --- Stats
-            
+                    detection = {"frame": frame_idx, "boxes": face_boxes, "source": "failed_no_fallback", "outcome": "failed"}
+                else:
+                    # All fallbacks failed
+                    face_boxes = []
+                    detection = {"frame": frame_idx, "boxes": face_boxes, "source": "all_failed"}
+            # --- Diagnostic & Stats
             if len(face_boxes) > 0:
                 frames_with_faces += 1
             else:
                 frames_no_faces += 1
+            
             # place rectangle on the video
             if visualize:
                 vis = cv2.resize(frame, (0, 0), fx=scale, fy=scale)
+                # visualization logic
                 for (x, y, w, h) in face_boxes:
                     xs, ys, ws, hs = [int(v * scale) for v in (x, y, w, h)]
-                    cv2.rectangle(vis, (xs, ys), (xs + ws, ys + hs), (0, 0, 255), 2)
-                
+                    color = (255, 0, 0)
+                    cv2.rectangle(vis, (xs, ys), (xs + ws, ys + hs), color, 2)
                 cv2.imshow("Face Detection", vis)
+                out.write(vis)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-            if len(face_boxes) == 0:
-                detection = {"frame": frame_idx, "boxes": face_boxes, "outcome": "failed", "source": "failed"}
             detections.append(detection)  
-
             frame_idx += 1
-
+            
         cap.release()
+        out.release()
         cv2.destroyAllWindows()
         total_time = time.time() - start_time
         fps_proc = frame_idx / total_time
@@ -250,18 +282,6 @@ class DetectFaces(PrivacyTool):
         missed_ratio = missed_detections / total_detects if total_detects > 0 else 0
         detection_accuracy = (1 - missed_ratio) * 100 if total_detects > 0 else 0
 
-        # print("\n========== PERFORMANCE SUMMARY ==========")
-        # print(f"Frames processed:    {frame_idx}")
-        # print(f"Detections run:      {total_detects}")
-        # print(f"Frames with faces:   {frames_with_faces} ({(frames_with_faces / frame_idx * 100):.2f}%)")
-        # print(f"Frames no faces:     {frames_no_faces} ({(frames_no_faces / frame_idx * 100):.2f}%)")
-        # print(f"Tracker recoveries:  {tracker_recoveries}")
-        # print(f"Kalman-only frames:  {kalman_only_frames} ({(kalman_only_frames/frame_idx * 100):.2f}%)")
-        # print(f"Missed detections:   {missed_detections}")
-        # print(f"Detection accuracy:  {detection_accuracy:.2f}%")
-        # print(f"Effective FPS:       {fps_proc:.2f}")
-        # print(f"Ratio processing rate over video fps: {round(fps_proc/fps, 3)}")
-        # print("=========================================\n")
 
         results = { "video_path": video_path,
             "processed_frames": frame_idx, 
@@ -272,6 +292,7 @@ class DetectFaces(PrivacyTool):
                        "detection_accuracy": round(detection_accuracy, 3),
                        'fps_video': fps,
                    }}
+
     
 
         return results

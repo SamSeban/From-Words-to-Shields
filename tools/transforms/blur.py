@@ -7,11 +7,8 @@ import cv2
 import os
 import time
 
-
-
 class Blur(PrivacyTool):
     name = "blur"
-
 
 
     def apply(self, data_detection,  kernel: int = 51):
@@ -41,7 +38,7 @@ class Blur(PrivacyTool):
 
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
-        scale = 1.5 # take 50% more for safety. This parameter can be tuned
+        scale = 2 # take 2 times more for safety. This parameter can be tuned
 
         frame_idx = 0
         
@@ -53,6 +50,8 @@ class Blur(PrivacyTool):
                 break
 
             boxes = detections.get(frame_idx, None)
+            if boxes is None:
+                print(f"Boxes is empty, frame Index: {frame_idx}")
 
             # Apply blur for each face box
             if boxes:
@@ -84,7 +83,6 @@ class Blur(PrivacyTool):
         total_time = end_time - start_time
         fps_proc = frame_idx / total_time
 
-        # print(f"fps processed: {fps_proc:.2f}, ratio: {(fps_proc/fps):.2f}")
         results = {
             "input_video_path": video_path,
             "output_video_path": output_path,
@@ -92,8 +90,6 @@ class Blur(PrivacyTool):
             'verification_detection_file': 'result_verification.json',
             "summary": {"fps_processed": round(fps_proc, 3), "ratio_speed_output_input": round(fps_proc/fps, 3)}
         }
-        # with open("output_face_blur.json", "w") as f:
-        #     json.dump(results, f, indent=4)
 
         return results
 
@@ -101,13 +97,6 @@ class Blur(PrivacyTool):
     def verify(self, result_blur, detection_file):
         """Optionally check blur intensity in masked regions.
         Use Laplacian to check for sharpness in the blurred region."""
-        # with open("output_face_blur.json", 'r') as f:
-        #     result_blur = json.load(f)
-        
-        # # Make sure detections file path is included in your JSON or set it manually here:
-        # detections_file = result_blur.get('detections_file', 'output_face_detection.json')
-        # with open(detections_file, 'r') as f:
-        #     detection_file = json.load(f)
         
         detections = detection_file['detections']
         video_path = result_blur['output_video_path']
@@ -156,10 +145,6 @@ class Blur(PrivacyTool):
             "blur_verified": strong_blur,
             "frames_checked": frame_idx,
         }
-
-
-        # print(f"Average Laplacian variance: {avg_blur:.2f}")
-        # print(f"Blur sufficient: {strong_blur}")
 
         return report
 
