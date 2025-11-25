@@ -4,11 +4,13 @@ import numpy as np
 import os
 import time
 from registry import register
+import time
+import json
 
 
 
 class DetectFaces(PrivacyTool):
-    name = "detect_faces"
+    name = "detect_faces" 
 
     def make_kalman_filter(self, x, y, w, h):
         # position and velocity. x(t) = x(t-1) + V(t-1)*dt; V(t) = V(t-1)
@@ -37,15 +39,20 @@ class DetectFaces(PrivacyTool):
         )
         kf.errorCovPost = np.eye(8, dtype=np.float32)
         return kf
-
-
-    def apply(self, video_path: str, visualize=True, detect_interval=3, scale=None):
+    
+    
+    def apply(self, video_path: str, live: bool, visualize=True, detect_interval=3, kalman_predict_limit=60):
         """Detect faces using YuNet + Tracker + Kalman hybrid system.
         The logic is: according to the detect interval, if the detectors didnt fail too many times in a row
         (in that case we believe there is nobody), and if the kalman filter is old -> detect. Otherwise, use a tracker
          and if the tracker fails, use a kalman filter. Handle grayscale videos using clahe. Log stats to decide 
          detection quality"""        
-        cap = cv2.VideoCapture(video_path)
+        
+        if video_path == "camera":
+            cap = cv2.VideoCapture(0)
+        else:
+            cap = cv2.VideoCapture(video_path)
+
         if not cap.isOpened():
             raise RuntimeError(f"Cannot open video, check path: {video_path}")
 
@@ -60,16 +67,6 @@ class DetectFaces(PrivacyTool):
         )
 
         fps = cap.get(cv2.CAP_PROP_FPS)
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-
-        # Output path
-        os.makedirs("data/results", exist_ok=True)
-        filename = os.path.basename(video_path)
-        output_path = os.path.join("data/results", f"detected_{filename}")
-
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
         # Load YuNet detector
         model_path = os.path.abspath(
@@ -92,7 +89,6 @@ class DetectFaces(PrivacyTool):
 
         #  Config parameters
         max_size = 780
-        kalman_predict_limit = 30  # fallback for tracker fail, max number of consecutive kalman prediction. Can be tuned
         frame_idx = 0
 
         trackers = None
@@ -201,8 +197,7 @@ class DetectFaces(PrivacyTool):
                         success = True
                     else:
                         # Detector failed and (no Kalman filters OR Kalman limit reached)
-                        # FIXED: Clear trackers and filters when limit is exceeded
-                        # Clear all tracking state
+                        # Clear trackers and filters when limit is exceeded
                         trackers = None
                         kf_filters = []
                         kalman_predictions = []
@@ -266,14 +261,19 @@ class DetectFaces(PrivacyTool):
                     color = (255, 0, 0)
                     cv2.rectangle(vis, (xs, ys), (xs + ws, ys + hs), color, 2)
                 cv2.imshow("Face Detection", vis)
-                out.write(vis)
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
-            detections.append(detection)  
+            
+            # if live call a helper function to make sure to have the right
+            # formats and deal with generators/dictionaries
+            if live:
+                yield frame, detection
+            else: 
+                detections.append(detection)
+                
             frame_idx += 1
             
         cap.release()
-        out.release()
         cv2.destroyAllWindows()
         total_time = time.time() - start_time
         fps_proc = frame_idx / total_time
@@ -292,9 +292,10 @@ class DetectFaces(PrivacyTool):
                        "detection_accuracy": round(detection_accuracy, 3),
                        'fps_video': fps,
                    }}
-
-    
-
+        
+        with open("result_detection.json", 'w') as f:
+            json.dump(results, f, indent = 2)
+   
         return results
     
     #-------------------------------------------------------------------------------------------------------------- 
@@ -306,11 +307,11 @@ class DetectFaces(PrivacyTool):
         This possibly needs changing in the future, since with the kalman filters small gaps problems exist but 
         they are considerably less than when this was implemented"""
 
-        
-        
+  
         num_faces_prev = 0
         gap_size = 0
         gaps = []
+
         total_frames = len(data['detections'])
         missing_frames = 0
         in_gap = False
@@ -374,6 +375,7 @@ class DetectFaces(PrivacyTool):
         }
 
         results = {"gaps": gaps, "summary": summary, 'pass': decide_pass}
+        
 
         return results
 

@@ -6,7 +6,7 @@ from registry import register
 class BlurFaces(PrivacyTool):
     name = "blur_faces"
 
-    def apply(self, video_path: str):
+    def apply(self, video_path: str, live=False):
         """Convenience wrapper:
         1) detect_faces(video_path, detector) → mask_stream_path
         2) blur(video_path, mask_stream_path, kernel) → video_path (blurred)
@@ -23,22 +23,31 @@ class BlurFaces(PrivacyTool):
         if blur is None:
             raise RuntimeError("blur tool not found in registry")
         
-        segs   = detect.apply(video_path=video_path)
-        check_segs = detect.verify(segs)
-        if check_segs['pass']:
-            out= blur.apply(data_detection=segs)
-            check_blur = blur.verify(result_blur = out, detection_file = segs)
-            if check_blur['blur_verified']:
-                return {"video_path":out['output_video_path']}
-            else:
-                print("blur didnt pass")
-                return
-        else:
-            print("detection didnt pass")
-            return
+        if live:
+            # streaming frame by frame
+            segs = detect.apply(video_path=video_path, live=True, visualize = False)
+            out = blur.apply(data_detection=segs, video_path = video_path, live= True)
+            for blurred_frame in out:
+                yield blurred_frame
 
+        else: 
+            segs = detect.apply(video_path=video_path, visualize = True, live=False)
+            # consume generator for detection
+            for _ in segs:
+                    pass
+            out = blur.apply(data_detection=None, video_path=video_path, live=False)
+            # Consume generator for blur
+            for _ in out:
+                    pass
+   
     def verify(self, **kwargs):
         return {"ok": True}
 
 TOOL = BlurFaces()
 register(TOOL)
+
+if __name__ == "__main__":
+    video_path='/home/daniel/Downloads/2.mp4'
+
+    for iteration in TOOL.apply(video_path=video_path, live=True):
+        pass
