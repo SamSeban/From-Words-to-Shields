@@ -6,6 +6,14 @@ from registry import register
 class BlurFaces(PrivacyTool):
     name = "blur_faces"
 
+    # this function is used to consume a generator and keep the last yield. Both in DetectFaces and in Blur, in the non-live mode,
+    # the last yield returns the full info about the video, so we need to keep it
+    def consume_generator(self, gen):
+        last = None
+        for last in gen:
+            pass
+        return last
+
     def apply(self, video_path: str, live=False):
         """Convenience wrapper:
         1) detect_faces(video_path, detector) → mask_stream_path
@@ -31,14 +39,13 @@ class BlurFaces(PrivacyTool):
                 yield blurred_frame
 
         else: 
-            segs = detect.apply(video_path=video_path, visualize = True, live=False)
-            # consume generator for detection
-            for _ in segs:
-                    pass
-            out = blur.apply(data_detection=None, video_path=video_path, live=False)
-            # Consume generator for blur
-            for _ in out:
-                    pass
+            result_detect = self.consume_generator(detect.apply(video_path=video_path, visualize = True, live=False))
+            check_detection = detect.verify(result_detect)
+            if check_detection['pass']:
+                out = None
+                result_blur = self.consume_generator(blur.apply(data_detection=result_detect, video_path=video_path, live=False))
+                check_blurring = blur.verify(result_blur, result_detect)
+
    
     def verify(self, **kwargs):
         return {"ok": True}
@@ -47,7 +54,7 @@ TOOL = BlurFaces()
 register(TOOL)
 
 if __name__ == "__main__":
-    video_path='/home/daniel/Downloads/2.mp4'
+    video_path='/home/daniel/Downloads/4.mp4'
 
-    for iteration in TOOL.apply(video_path=video_path, live=True):
+    for iteration in TOOL.apply(video_path=video_path, live=False):
         pass

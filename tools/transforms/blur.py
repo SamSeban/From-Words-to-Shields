@@ -5,7 +5,6 @@ from registry import register
 import cv2
 import os
 import time
-import json
 
 class Blur(PrivacyTool):
     name = "blur"
@@ -98,13 +97,11 @@ class Blur(PrivacyTool):
         
         # Offline mode
         else: 
-            with open("result_detection.json", "r") as f:
-                data_detection = json.load(f)
+            
             # take just the face boxes from data detection
             detections = {d["frame"]: d["boxes"] for d in data_detection["detections"]}
             video_path = data_detection["video_path"]
-
-
+            total_frames = len(detections)
             # start video reader/writer
             cap = cv2.VideoCapture(video_path)
             if not cap.isOpened():
@@ -120,7 +117,6 @@ class Blur(PrivacyTool):
 
             frame_idx = 0
             
-
             start_time = time.time()
             while True:
                 ret, frame = cap.read()
@@ -153,24 +149,25 @@ class Blur(PrivacyTool):
                 if cv2.waitKey(1) & 0xFF == ord('q'):
                     break
                 out.write(frame)
+                if frame_idx == total_frames - 1:
+                    end_time = time.time()
+                    total_time = end_time - start_time
+                    fps_proc = frame_idx / total_time
+
+                    results = {
+                        "input_video_path": video_path,
+                        "output_video_path": output_path,
+                        'detections_file': 'output_face_detection.json',
+                        'verification_detection_file': 'result_verification.json',
+                        "summary": {"fps_processed": round(fps_proc, 3), "ratio_speed_output_input": round(fps_proc/fps, 3)}
+                    }
+
+                    yield results
                 frame_idx += 1
             
             cap.release()
             out.release()
-            end_time = time.time()
-            total_time = end_time - start_time
-            fps_proc = frame_idx / total_time
-
-            results = {
-                "input_video_path": video_path,
-                "output_video_path": output_path,
-                'detections_file': 'output_face_detection.json',
-                'verification_detection_file': 'result_verification.json',
-                "summary": {"fps_processed": round(fps_proc, 3), "ratio_speed_output_input": round(fps_proc/fps, 3)}
-            }
-
-            return results
-
+            
 
     def verify(self, result_blur, detection_file):
         """Optionally check blur intensity in masked regions.

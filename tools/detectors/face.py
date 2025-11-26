@@ -41,7 +41,7 @@ class DetectFaces(PrivacyTool):
         return kf
     
     
-    def apply(self, video_path: str, live: bool, visualize=True, detect_interval=3, kalman_predict_limit=60):
+    def apply(self, video_path: str, live: bool, visualize=False, detect_interval=3, kalman_predict_limit=60):
         """Detect faces using YuNet + Tracker + Kalman hybrid system.
         The logic is: according to the detect interval, if the detectors didnt fail too many times in a row
         (in that case we believe there is nobody), and if the kalman filter is old -> detect. Otherwise, use a tracker
@@ -55,6 +55,9 @@ class DetectFaces(PrivacyTool):
 
         if not cap.isOpened():
             raise RuntimeError(f"Cannot open video, check path: {video_path}")
+        
+        if not live:
+            total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
         # Check first frame to get info about the video
         ret, first_frame = cap.read()
@@ -270,34 +273,30 @@ class DetectFaces(PrivacyTool):
                 yield frame, detection
             else: 
                 detections.append(detection)
+                if frame_idx == total_frames - 1:
+                    # the non-live version, works with a dictionary which is returned when the detection is done running
+                    # so for the last frame, yield the detections for the full video, and the info about the video
+                    total_time = time.time() - start_time
+                    fps_proc = frame_idx / total_time
+
+                    # --- Accuracy metrics
+                    missed_ratio = missed_detections / total_detects if total_detects > 0 else 0
+                    detection_accuracy = (1 - missed_ratio) * 100 if total_detects > 0 else 0
+                    results = { "video_path": video_path,
+                                "processed_frames": frame_idx, 
+                                "detections": detections,
+                                "stats": {
+                                            "avg_fps": round(fps_proc, 2),
+                                            "miss_ratio": missed_ratio,
+                                            "detection_accuracy": round(detection_accuracy, 3),
+                                            'fps_video': fps,
+                   }}
+                    yield results
                 
             frame_idx += 1
             
         cap.release()
-        cv2.destroyAllWindows()
-        total_time = time.time() - start_time
-        fps_proc = frame_idx / total_time
-
-        # --- Accuracy metrics
-        missed_ratio = missed_detections / total_detects if total_detects > 0 else 0
-        detection_accuracy = (1 - missed_ratio) * 100 if total_detects > 0 else 0
-
-
-        results = { "video_path": video_path,
-            "processed_frames": frame_idx, 
-                   "detections": detections,
-                   "stats": {
-                       "avg_fps": round(fps_proc, 2),
-                       "miss_ratio": missed_ratio,
-                       "detection_accuracy": round(detection_accuracy, 3),
-                       'fps_video': fps,
-                   }}
-        
-        with open("result_detection.json", 'w') as f:
-            json.dump(results, f, indent = 2)
-   
-        return results
-    
+        cv2.destroyAllWindows()    
     #-------------------------------------------------------------------------------------------------------------- 
     
     
