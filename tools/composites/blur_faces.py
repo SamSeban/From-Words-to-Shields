@@ -39,12 +39,22 @@ class BlurFaces(PrivacyTool):
                 yield blurred_frame
 
         else: 
-            result_detect = self.consume_generator(detect.apply(video_path=video_path, visualize = True, live=False))
+            result_detect = self.consume_generator(detect.apply(video_path=video_path, visualize = False, live=False))
             check_detection = detect.verify(result_detect)
             if check_detection['pass']:
                 out = None
                 result_blur = self.consume_generator(blur.apply(data_detection=result_detect, video_path=video_path, live=False))
                 check_blurring = blur.verify(result_blur, result_detect)
+                if result_blur and "output_video_path" in result_blur:
+                    yield {
+                        "output_path": result_blur["output_video_path"],
+                        "input_video_path": result_blur.get("input_video_path"),
+                        "summary": result_blur.get("summary", {})
+                    }
+                else:
+                    yield result_blur if result_blur else {"error": "Blur produced no output"}
+            else:
+                yield {"error": "Face detection verification failed"}
 
    
     def verify(self, **kwargs):
