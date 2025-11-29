@@ -30,7 +30,7 @@ AVAILABLE TOOLS:
    Returns: output_video_path (blurred video)
 
 4. detect_keywords - Detect keywords only
-   Args: keywords (list)
+   Args: user_intent (string)
    Returns: segments (timestamps of detected keywords)
 
 5. mute_segments - Mute audio segments
@@ -38,7 +38,7 @@ AVAILABLE TOOLS:
    Returns: output_audio_path (processed audio)
 
 6. mute_keywords - Mute keywords in audio (composite tool)
-   Args: keywords (list), mode (str: "silence" or "beep")
+   Args: user_intent, mode (str: "silence" or "beep")
    Returns: output_audio_path (processed audio)
 
 CRITICAL RULES:
@@ -59,7 +59,7 @@ Response:
 
 Request: "Mute password mentions"
 Response:
-{"pipeline": [{"tool": "mute_keywords", "args": {"keywords": ["password"], "mode": "beep"}}]}
+{"pipeline": [{"tool": "mute_keywords", "args": {"user_intent": "Mute password mentions", "mode": "beep"}}]}
 
 Request: "Remove license plates from video"
 Response:

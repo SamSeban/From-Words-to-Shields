@@ -4,6 +4,8 @@ Transform: mutes audio segments based on provided timestamps.
 
 from tool_api import PrivacyTool
 from registry import register
+import json
+import whisper
 
 
 class MuteSegments(PrivacyTool):
@@ -21,8 +23,7 @@ class MuteSegments(PrivacyTool):
         Returns:
             {"audio_path": path to the muted audio file}
         """
-        import json
-        import numpy as np
+        
         from pathlib import Path
         
         try:
@@ -102,9 +103,42 @@ class MuteSegments(PrivacyTool):
         
         return {"audio_path": str(output_path)}
 
-    def verify(self, **kwargs):
-        # TODO: Verify that keywords are no longer audible/textual.
-        return {"ok": True}
+    def verify(self, muted_audio_path, segments_path, **kwargs):
+        # retranscribe the audio using whisper and check that the keywords are beeped
+
+        with open(segments_path, 'r') as f:
+            segments_data = json.load(f)
+
+        segments = segments_data.get("segments", [])
+        sensitive_phrases = list(set(s['sensitive_content'] for s in segments))
+
+        if not sensitive_phrases:
+            return {"ok": True, "message": "No sensitive phrases to verify"}
+        
+        # transcribe audio
+        model = whisper.load_model("base")
+        result = model.transcribe(muted_audio_path, verbose = False)
+        muted_transcript = result.get("text", "").lower()
+        # check if some phrases which are supposed to be muted are not muted
+        remaining_phrases = []
+        for phrase in sensitive_phrases:
+            phrase_lower = phrase.lower()
+            if phrase_lower in muted_transcript:
+                remaining_phrases.append(phrase)
+
+        total_sensitive_phrases = len(sensitive_phrases)
+        removed_phrases = total_sensitive_phrases - len(remaining_phrases)
+        success_rate = removed_phrases / total_sensitive_phrases if total_sensitive_phrases > 0 else 1.0
+
+        return {
+            "ok": len(remaining_phrases) == 0,
+            "remaining_phrases": remaining_phrases,
+            "successfully_removed": removed_phrases,
+            "total_phrases": total_sensitive_phrases,
+            "success_rate": success_rate,
+            "muted_transcript": muted_transcript
+        }
+
 
 
 TOOL = MuteSegments()

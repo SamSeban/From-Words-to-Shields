@@ -14,7 +14,7 @@ from registry import get, register
 class MuteKeywords(PrivacyTool):
     name = "mute_keywords"
 
-    def apply(self, audio_path: str, keywords, asr: str = "whisper", mode: str = "silence", **kwargs):
+    def apply(self, audio_path: str, user_intent: str, asr: str = "whisper", mode: str = "silence", **kwargs):
         """Convenience wrapper:
         - Detect keyword time ranges using ASR.
         - Mute those ranges in the audio using the chosen mode.
@@ -25,9 +25,17 @@ class MuteKeywords(PrivacyTool):
         # Call detect_keywords to find keyword timestamps
         detect = get("detect_keywords")
         mute   = get("mute_segments")
-        segs   = detect.apply(audio_path=audio_path, keywords=keywords, asr=asr)
-        out    = mute.apply(audio_path=audio_path, segments_path=segs["segments_path"], mode=mode)
-        return out
+        segs_detect = detect.apply(audio_path=audio_path, user_intent=user_intent, asr=asr)
+        segs_verify = detect.verify(segments_path = segs_detect["segments_path"], audio_path = audio_path)
+        if segs_verify["ok"]:
+            out_detect = mute.apply(audio_path=audio_path, segments_path=segs_detect["segments_path"], mode=mode)
+            out_verify = mute.verify(muted_audio_path = out_detect['audio_path'], segments_path=segs_detect["segments_path"])
+            if out_verify['ok']:
+                return out_detect
+            else:
+                print("beeping/muting didn't pass the verification")
+        else:
+            print("didn't pass detection verification")
 
     def verify(self, **kwargs):
         """Optionally re-run ASR and confirm keywords are no longer audible/textual."""
@@ -35,3 +43,9 @@ class MuteKeywords(PrivacyTool):
 
 TOOL = MuteKeywords()
 register(TOOL)
+
+
+if __name__ == "__main__":
+    audio_path = "/home/daniel/Documents/Github/From-Words-to-Shields/data/samples/address2.mp4"
+    user_intent = "I want you to beep the mentions of my address"
+    TOOL.apply(audio_path=audio_path, user_intent= user_intent, mode= "beep")
