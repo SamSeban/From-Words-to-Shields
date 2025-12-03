@@ -17,6 +17,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 import registry
+import audit.logger as audit
 
 load_dotenv()
 # For the moment the list of the available tools is just written in the prompt. Future improvement idea: Think of
@@ -144,10 +145,12 @@ class PipelinePlanner():
             # Create a specific request for this tool based on the user's original intent
             tool_request = self._create_tool_request(tool_name, user_request, step.get("args", {}))
             
+            audit.tool_gen_start(tool_name)
             generation_result = generate_custom_tool(tool_request, list(self.BUILTIN_TOOLS))
             
             if generation_result.get("success"):
                 actual_tool_name = generation_result['tool_name']
+                audit.tool_gen_end(tool_name, True, actual_tool_name)
                 print(f"✅ Successfully generated tool: {actual_tool_name}")
                 generated_tools.append({
                     "requested": tool_name,
@@ -163,6 +166,7 @@ class PipelinePlanner():
                             break
             else:
                 error_msg = generation_result.get('error', 'Unknown error')
+                audit.tool_gen_end(tool_name, False, error=error_msg)
                 print(f"❌ Failed to generate tool '{tool_name}': {error_msg}")
                 failed_tools.append({
                     "tool": tool_name,

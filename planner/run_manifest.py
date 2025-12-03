@@ -6,6 +6,7 @@ import os
 import subprocess
 import inspect
 from pathlib import Path
+import audit.logger as audit
 
 
 def merge_video_audio(video_path, audio_path, output_path):
@@ -147,6 +148,7 @@ def run_manifest(manifest, file_path=None, base_path=None):
         # Determine what type of tool this is based on its signature
         tool_type = _get_tool_type(accepted_params)
         print(f"  Tool type: {tool_type} (accepts: {', '.join(p for p in ['video_path', 'audio_path'] if p in accepted_params) or 'neither'})")
+        audit.tool_start(i, tool_name, tool_type, args)
         
         # Smart input injection: use previous output of same type, or fall back to original file
         if 'video_path' in accepted_params and 'video_path' not in args:
@@ -209,6 +211,8 @@ def run_manifest(manifest, file_path=None, base_path=None):
                 elif "audio_path" in result:
                     output_path_field = result['audio_path']
                 
+                audit.tool_end(i, tool_name, True, output_path_field)
+                
                 if output_path_field:
                     print(f"    Output: {output_path_field}")
                     # Track video and audio outputs separately for automatic chaining
@@ -222,7 +226,9 @@ def run_manifest(manifest, file_path=None, base_path=None):
                         
                 previous_result = result
             else:
-                print(f"  ✗ Step {i} failed: {result.get('error', 'Unknown error')}")
+                err = result.get('error', 'Unknown error') if result else 'No result'
+                audit.tool_end(i, tool_name, False, error=err)
+                print(f"  ✗ Step {i} failed: {err}")
                 break
                 
         except Exception as e:
@@ -233,6 +239,7 @@ def run_manifest(manifest, file_path=None, base_path=None):
                 "result": error_result,
                 "success": False
             })
+            audit.tool_end(i, tool_name, False, error=str(e))
             print(f"  ✗ Step {i} exception: {e}")
             break
     
@@ -252,9 +259,11 @@ def run_manifest(manifest, file_path=None, base_path=None):
         base_name = Path(file_path).stem if file_path else "output"
         merged_output = results_dir / f"{base_name}_processed.mp4"
         
+        audit.merge_start(last_video_output, last_audio_output)
         merge_result = merge_video_audio(last_video_output, last_audio_output, str(merged_output))
         
         if merge_result.get("success"):
+            audit.merge_end(True, merge_result["output_path"])
             # Update the final result to point to merged file
             previous_result = {
                 "output_path": merge_result["output_path"],
@@ -264,13 +273,15 @@ def run_manifest(manifest, file_path=None, base_path=None):
             }
             print(f"\n✓ Final merged output: {merge_result['output_path']}")
         else:
-            print(f"\n✗ Merge failed: {merge_result.get('error', 'Unknown error')}")
+            err = merge_result.get('error', 'Unknown error')
+            audit.merge_end(False, error=err)
+            print(f"\n✗ Merge failed: {err}")
             # Still return the individual outputs
             previous_result = {
                 "video_output": last_video_output,
                 "audio_output": last_audio_output,
                 "merged": False,
-                "merge_error": merge_result.get('error')
+                "merge_error": err
             }
     elif last_video_output:
         print(f"Video-only processing completed")
