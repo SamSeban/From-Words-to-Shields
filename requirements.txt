@@ -7,9 +7,18 @@ torchaudio>=2.0.0
 pydub>=0.25.1
 librosa>=0.10.0
 soundfile>=0.12.1
+pygame>=2.5.0
+sounddevice>=0.4.6
 
 # General utilities
 pathlib2>=2.3.7; python_version<"3.4"
 
 # open cv
-opencv-python==4.10.0
+opencv-contrib-python>=4.10.0
+numpy>=1.24.0
+
+# LLM API
+groq>=0.4.0
+
+# Environment and utilities
+python-dotenv>=1.0.0

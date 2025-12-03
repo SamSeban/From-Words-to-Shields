@@ -60,8 +60,37 @@ def merge_video_audio(video_path, audio_path, output_path):
         return {"error": f"Merge failed: {str(e)}", "success": False}
 
 
+def _get_tool_type(accepted_params):
+    """Determine if a tool is video-based, audio-based, or mixed based on its accepted parameters.
+    
+    Args:
+        accepted_params: Set of parameter names the tool accepts
+        
+    Returns:
+        'video', 'audio', or 'mixed'
+    """
+    accepts_video = 'video_path' in accepted_params
+    accepts_audio = 'audio_path' in accepted_params
+    
+    if accepts_video and accepts_audio:
+        return 'mixed'
+    elif accepts_video:
+        return 'video'
+    elif accepts_audio:
+        return 'audio'
+    else:
+        # Tool doesn't accept standard paths - could be a utility tool
+        return 'unknown'
+
+
 def run_manifest(manifest, file_path=None, base_path=None):
-    """Execute the generated pipeline and return results."""
+    """Execute the generated pipeline and return results.
+    
+    Automatically chains outputs to inputs based on tool type:
+    - Video tools receive the most recent video output as input
+    - Audio tools receive the most recent audio output as input
+    - No need for $prev references in the manifest
+    """
     
     if "error" in manifest:
         return {"error": f"Cannot execute pipeline: {manifest['error']}"}
@@ -77,53 +106,70 @@ def run_manifest(manifest, file_path=None, base_path=None):
     
     results = []
     previous_result = None
-    video_output = None  # Track video output
-    audio_output = None  # Track audio output
+    
+    # Track the most recent output of each type for automatic chaining
+    last_video_output = None  # Most recent video output path
+    last_audio_output = None  # Most recent audio output path
+    
+    # Define file extensions
+    video_exts = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv']
+    audio_exts = ['.wav', '.mp3', '.flac', '.aac', '.ogg', '.m4a']
+    
+    # Determine original file type
+    original_file_type = None
+    if file_path:
+        file_ext = os.path.splitext(file_path)[1].lower()
+        if file_ext in video_exts:
+            original_file_type = 'video'
+        elif file_ext in audio_exts:
+            original_file_type = 'audio'
     
     for i, step in enumerate(manifest["pipeline"], 1):
         tool_name = step.get("tool")
         args = step.get("args", {}).copy()  # Make a copy to avoid modifying the manifest
         
-        print(f"Step {i}: Executing '{tool_name}'")
+        print(f"\nStep {i}: Executing '{tool_name}'")
         
         # Get the tool from registry
         tool = registry.get(tool_name)
         if not tool:
             return {"error": f"Tool '{tool_name}' not found in registry"}
         
-        # Inject file_path if provided and tool needs it
-        if file_path:
-            # Determine whether this is a video or audio file based on file extension
-            file_ext = os.path.splitext(file_path)[1].lower()
-            video_exts = ['.mp4', '.avi', '.mov', '.mkv', '.wmv', '.flv']
-            audio_exts = ['.wav', '.mp3', '.flac', '.aac', '.ogg', '.m4a']
-            
-            # Inspect the tool's apply method to see what parameters it accepts
-            try:
-                apply_method = tool.apply
-                sig = inspect.signature(apply_method)
-                accepted_params = set(sig.parameters.keys())
-            except Exception:
-                # If inspection fails, assume it accepts common parameters
-                accepted_params = {'video_path', 'audio_path', 'live', 'kwargs'}
-            
-            # Inject appropriate file path based on file extension and what tool accepts
-            # This works for both known and dynamically generated tools
-            if file_ext in video_exts:
-                # For video files, inject both video_path and audio_path
-                # but only if the tool actually accepts them
-                if 'video_path' not in args and 'video_path' in accepted_params:
-                    args['video_path'] = file_path
-                    print(f"  Injected video_path: {file_path}")
-                if 'audio_path' not in args and 'audio_path' in accepted_params:
-                    args['audio_path'] = file_path
-                    print(f"  Injected audio_path: {file_path}")
-            elif file_ext in audio_exts:
-                if 'audio_path' not in args and 'audio_path' in accepted_params:
-                    args['audio_path'] = file_path
-                    print(f"  Injected audio_path: {file_path}")
+        # Inspect the tool's apply method to see what parameters it accepts
+        try:
+            apply_method = tool.apply
+            sig = inspect.signature(apply_method)
+            accepted_params = set(sig.parameters.keys())
+        except Exception:
+            # If inspection fails, assume it accepts common parameters
+            accepted_params = {'video_path', 'audio_path', 'live', 'kwargs'}
         
-        # Replace $prev references with actual values from previous step
+        # Determine what type of tool this is based on its signature
+        tool_type = _get_tool_type(accepted_params)
+        print(f"  Tool type: {tool_type} (accepts: {', '.join(p for p in ['video_path', 'audio_path'] if p in accepted_params) or 'neither'})")
+        
+        # Smart input injection: use previous output of same type, or fall back to original file
+        if 'video_path' in accepted_params and 'video_path' not in args:
+            if last_video_output:
+                # Use the output from a previous video processing step
+                args['video_path'] = last_video_output
+                print(f"  Chained video_path from previous step: {Path(last_video_output).name}")
+            elif file_path and original_file_type == 'video':
+                # Fall back to original input file
+                args['video_path'] = file_path
+                print(f"  Using original video_path: {Path(file_path).name}")
+        
+        if 'audio_path' in accepted_params and 'audio_path' not in args:
+            if last_audio_output:
+                # Use the output from a previous audio processing step
+                args['audio_path'] = last_audio_output
+                print(f"  Chained audio_path from previous step: {Path(last_audio_output).name}")
+            elif file_path:
+                # Fall back to original input file (video files also contain audio)
+                args['audio_path'] = file_path
+                print(f"  Using original audio_path: {Path(file_path).name}")
+        
+        # Legacy support: Replace $prev references if they exist in the manifest
         if previous_result:
             for key, value in args.items():
                 if isinstance(value, str) and value.startswith("$prev."):
@@ -152,7 +198,7 @@ def run_manifest(manifest, file_path=None, base_path=None):
             })
             
             if result and "error" not in result:
-                print(f"  Step {i} completed successfully")
+                print(f"  ✓ Step {i} completed successfully")
                 
                 # Check for various output path field names
                 output_path_field = None
@@ -164,16 +210,19 @@ def run_manifest(manifest, file_path=None, base_path=None):
                     output_path_field = result['audio_path']
                 
                 if output_path_field:
-                    print(f"     Output: {output_path_field}")
-                    # Track video and audio outputs separately
+                    print(f"    Output: {output_path_field}")
+                    # Track video and audio outputs separately for automatic chaining
                     output_ext = os.path.splitext(output_path_field)[1].lower()
-                    if output_ext in ['.mp4', '.avi', '.mov', '.mkv']:
-                        video_output = output_path_field
-                    elif output_ext in ['.wav', '.mp3', '.aac', '.flac']:
-                        audio_output = output_path_field
+                    if output_ext in video_exts:
+                        last_video_output = output_path_field
+                        print(f"    → Updated last_video_output")
+                    elif output_ext in audio_exts:
+                        last_audio_output = output_path_field
+                        print(f"    → Updated last_audio_output")
+                        
                 previous_result = result
             else:
-                print(f"  Step {i} failed: {result['error']}")
+                print(f"  ✗ Step {i} failed: {result.get('error', 'Unknown error')}")
                 break
                 
         except Exception as e:
@@ -184,14 +233,17 @@ def run_manifest(manifest, file_path=None, base_path=None):
                 "result": error_result,
                 "success": False
             })
-            print(f"  Step {i} exception: {e}")
+            print(f"  ✗ Step {i} exception: {e}")
             break
     
-    # If we have both video and audio outputs, merge them
-    if video_output and audio_output and len(results) > 1:
-        print("\n" + "=" * 40)
-        print("Merging video and audio streams...")
-        print("=" * 40)
+    # Determine final output
+    print("\n" + "=" * 40)
+    print("Pipeline Summary")
+    print("=" * 40)
+    
+    # If we have both video and audio outputs from different steps, merge them
+    if last_video_output and last_audio_output:
+        print("Both video and audio were processed - merging streams...")
         
         # Generate merged output filename
         results_dir = Path("data/results")
@@ -200,18 +252,35 @@ def run_manifest(manifest, file_path=None, base_path=None):
         base_name = Path(file_path).stem if file_path else "output"
         merged_output = results_dir / f"{base_name}_processed.mp4"
         
-        merge_result = merge_video_audio(video_output, audio_output, str(merged_output))
+        merge_result = merge_video_audio(last_video_output, last_audio_output, str(merged_output))
         
         if merge_result.get("success"):
             # Update the final result to point to merged file
             previous_result = {
                 "output_path": merge_result["output_path"],
-                "video_source": video_output,
-                "audio_source": audio_output,
+                "video_source": last_video_output,
+                "audio_source": last_audio_output,
                 "merged": True
             }
             print(f"\n✓ Final merged output: {merge_result['output_path']}")
         else:
             print(f"\n✗ Merge failed: {merge_result.get('error', 'Unknown error')}")
+            # Still return the individual outputs
+            previous_result = {
+                "video_output": last_video_output,
+                "audio_output": last_audio_output,
+                "merged": False,
+                "merge_error": merge_result.get('error')
+            }
+    elif last_video_output:
+        print(f"Video-only processing completed")
+        print(f"✓ Final output: {last_video_output}")
+        previous_result = {"output_path": last_video_output}
+    elif last_audio_output:
+        print(f"Audio-only processing completed")
+        print(f"✓ Final output: {last_audio_output}")
+        previous_result = {"output_path": last_audio_output}
+    else:
+        print("No output files generated")
     
     return {"pipeline_results": results, "final_result": previous_result}

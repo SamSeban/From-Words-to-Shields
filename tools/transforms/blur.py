@@ -10,7 +10,7 @@ class Blur(PrivacyTool):
     name = "blur"
 
 
-    def apply(self, data_detection, video_path, kernel: int = 81, live : bool = False):
+    def apply(self, data_detection, video_path, kernel: int = 121, live : bool = False):
         """
         If live==False: expect data_detection to be the dict produced by detector.apply(...)
         If live==True: expect data_detection to be a generator yielding (frame, detection) tuples

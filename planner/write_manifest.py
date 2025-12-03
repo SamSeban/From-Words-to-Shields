@@ -4,18 +4,26 @@ from groq import Groq
 from dotenv import load_dotenv
 import json
 import time
+import sys
+
 try:
     from .tool_generator import generate_custom_tool
 except ImportError:
     from tool_generator import generate_custom_tool 
 
+# Add project root to path for registry access
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+import registry
 
 load_dotenv()
 # For the moment the list of the available tools is just written in the prompt. Future improvement idea: Think of
 # a way to have give it direclty from the registry, so that it is always updated
 SYSTEM_PROMPT = """You are a privacy-protection pipeline planner. Given a user request, generate a JSON manifest.
 
-AVAILABLE TOOLS:
+BUILT-IN TOOLS (pre-coded and available):
 
 1. detect_faces - Detect faces only
    Args: none (input file provided at runtime)
@@ -41,15 +49,21 @@ AVAILABLE TOOLS:
    Args: user_intent, mode (str: "silence" or "beep")
    Returns: output_audio_path (processed audio)
 
+TOOL NAMING CONVENTION:
+When proposing custom tools (not in the built-in list), use these naming patterns:
+- For detection: detect_<object> (e.g., detect_license_plates, detect_text)
+- For blurring/removal: blur_<object> or remove_<object> (e.g., blur_license_plates, remove_background)
+- For audio processing: <action>_<target> (e.g., transcribe_audio, enhance_audio)
+- For composite operations: <action>_<objects> (e.g., blur_license_plates_and_faces)
+
 CRITICAL RULES:
-- ONLY use tools from the list above
+- For requests matching built-in tools, use those tools directly
+- For requests needing capabilities NOT in the built-in list, propose a sensible tool name following the naming convention
 - If a request requires BOTH video and audio processing, create separate steps for each
-- If a request requires extracting audio from video or mixing modalities, respond with an error
-- If a requested capability is NOT in the available tools, you MUST respond with:
-  {"error": "Tool 'X' not available", "available_tools": ["list", "of", "related", "tools"]}
 - Blur kernel MUST be an odd number (e.g., 31, 21, 15, 51)
 - Output valid JSON only
 - For composite tools (blur_faces, mute_keywords), prefer using them over manual chaining unless custom parameters are needed
+- NEVER return an error for unavailable tools - just propose what tool would be needed
 
 EXAMPLES:
 
@@ -63,30 +77,45 @@ Response:
 
 Request: "Remove license plates from video"
 Response:
-{"error": "Tool 'detect_license_plates' not available", "available_tools": ["blur_faces", "detect_faces", "blur"]}
+{"pipeline": [{"tool": "blur_license_plates", "args": {}}]}
 
 Request: "Transcribe this audio"
 Response:
-{"error": "Tool 'transcribe' not available", "available_tools": ["detect_keywords", "mute_keywords", "mute_segments"]}
+{"pipeline": [{"tool": "transcribe_audio", "args": {}}]}
 
-IMPORTANT: If the user asks for something that doesn't match ANY available tool, return an error response. Do NOT try to work around missing capabilities.
+Request: "Blur faces and remove license plates"
+Response:
+{"pipeline": [{"tool": "blur_faces", "args": {}}, {"tool": "blur_license_plates", "args": {}}]}
+
+Request: "Blur faces and mute password mentions"
+Response:
+{"pipeline": [{"tool": "blur_faces", "args": {}}, {"tool": "mute_keywords", "args": {"user_intent": "Mute password mentions", "mode": "beep"}}]}
+
+IMPORTANT: Always propose a pipeline with sensible tool names. The system will automatically generate any missing tools.
 
 Generate manifest for:"""
 
 
 class PipelinePlanner():
+    # Built-in tools that are pre-coded and available
+    BUILTIN_TOOLS = {
+        "detect_faces", "blur", "blur_faces",
+        "detect_keywords", "mute_segments", "mute_keywords"
+    }
+    
     def __init__(self, api_key: str):
         self.client = Groq(api_key=api_key)
         self.model = "llama-3.3-70b-versatile" # this model was chosen since it's fast and accurate enough
 
     def plan(self, user_request: str):
-            
-        # First attempt to generate manifest
+        """Generate a manifest for the user request, auto-generating any missing tools."""
+        
+        # Generate the initial manifest
         response = self.client.chat.completions.create(
-            model= self.model,
+            model=self.model,
             messages=[
                 {'role': 'system', 'content': SYSTEM_PROMPT},
-                {'role':'user', 'content': user_request}
+                {'role': 'user', 'content': user_request}
             ],
             temperature=0.1,
             response_format={"type": "json_object"}
@@ -94,132 +123,101 @@ class PipelinePlanner():
 
         manifest = json.loads(response.choices[0].message.content)
         
-        # Check if this is an error response for unavailable tool
-        if "error" in manifest and "not available" in manifest["error"]:
-            try:
-                # Extract the tool name from the error message
-                error_msg = manifest["error"]
-                # Look for pattern like "Tool 'X' not available"
-                import re
-                tool_match = re.search(r"Tool '([^']+)' not available", error_msg)
-                if tool_match:
-                    requested_tool = tool_match.group(1)
-                    available_tools = manifest.get("available_tools", [])
-                    
-                    print(f"Attempting to generate custom tool: {requested_tool}")
-                    
-                    # Generate the custom tool
-                    generation_result = generate_custom_tool(user_request, available_tools)
-                    
-                    if generation_result.get("success"):
-                        print(f"Successfully generated tool: {generation_result['tool_name']}")
-                        
-                        # Update the system prompt to include the new tool
-                        new_system_prompt = self._update_system_prompt_with_new_tool(
-                            generation_result['tool_name'], user_request
-                        )
-                        
-                        print(f"🔄 Retrying manifest generation with new tool available...")
-                        
-                        # Retry generating the manifest with the new tool available
-                        retry_response = self.client.chat.completions.create(
-                            model=self.model,
-                            messages=[
-                                {'role': 'system', 'content': new_system_prompt},
-                                {'role': 'user', 'content': user_request}
-                            ],
-                            temperature=0.1,
-                            response_format={"type": "json_object"}
-                        )
-                        
-                        retry_manifest = json.loads(retry_response.choices[0].message.content)
-                        return retry_manifest
-                    else:
-                        # If tool generation failed, return an error
-                        return {
-                            "error": f"Failed to generate custom tool '{requested_tool}': {generation_result.get('error', 'Unknown error')}"
-                        }
-                        
-            except Exception as e:
-                # If anything goes wrong in tool generation, return the original error
-                return {
-                    "error": f"Tool generation failed: {str(e)}. Original error: {manifest['error']}"
-                }
+        # Check if manifest has a pipeline
+        if "pipeline" not in manifest:
+            return manifest  # Return as-is if no pipeline (might be an error or something else)
+        
+        # Find tools that need to be generated
+        tools_to_generate = []
+        for step in manifest["pipeline"]:
+            tool_name = step.get("tool")
+            if tool_name and not self._tool_exists(tool_name):
+                tools_to_generate.append((tool_name, step))
+        
+        # Generate any missing tools
+        generated_tools = []
+        failed_tools = []
+        
+        for tool_name, step in tools_to_generate:
+            print(f"🔧 Tool '{tool_name}' not found. Generating...")
+            
+            # Create a specific request for this tool based on the user's original intent
+            tool_request = self._create_tool_request(tool_name, user_request, step.get("args", {}))
+            
+            generation_result = generate_custom_tool(tool_request, list(self.BUILTIN_TOOLS))
+            
+            if generation_result.get("success"):
+                actual_tool_name = generation_result['tool_name']
+                print(f"✅ Successfully generated tool: {actual_tool_name}")
+                generated_tools.append({
+                    "requested": tool_name,
+                    "generated": actual_tool_name,
+                    "file_path": generation_result.get('tool_file_path')
+                })
+                
+                # Update the manifest if the generated tool has a different name
+                if actual_tool_name != tool_name:
+                    for s in manifest["pipeline"]:
+                        if s.get("tool") == tool_name:
+                            s["tool"] = actual_tool_name
+                            break
+            else:
+                error_msg = generation_result.get('error', 'Unknown error')
+                print(f"❌ Failed to generate tool '{tool_name}': {error_msg}")
+                failed_tools.append({
+                    "tool": tool_name,
+                    "error": error_msg
+                })
+        
+        # Add metadata about generated tools to manifest
+        if generated_tools:
+            manifest["_generated_tools"] = generated_tools
+        
+        if failed_tools:
+            manifest["_generation_errors"] = failed_tools
+            # Don't fail the whole manifest - let the executor handle missing tools
         
         return manifest
     
-    def _update_system_prompt_with_new_tool(self, tool_name: str, user_request: str) -> str:
-        """Update the system prompt to include the newly generated tool."""
-        # Create a basic tool description based on the user request
-        tool_description = self._infer_tool_description(tool_name, user_request)
+    def _tool_exists(self, tool_name: str) -> bool:
+        """Check if a tool exists in the registry or as a built-in."""
+        # Check built-in tools first
+        if tool_name in self.BUILTIN_TOOLS:
+            return True
         
-        # Insert the new tool into the AVAILABLE TOOLS section
-        lines = SYSTEM_PROMPT.split('\n')
-        
-        # Find where to insert the new tool (after the existing tools)
-        insert_index = -1
-        for i, line in enumerate(lines):
-            if "6. mute_keywords - Mute keywords in audio (composite tool)" in line:
-                insert_index = i + 1
-                break
-        
-        if insert_index > 0:
-            # Insert the new tool description with proper arguments
-            if "background" in tool_name.lower():
-                new_tool_line = f"\n7. {tool_name} - {tool_description}"
-                new_tool_line += f"\n   Args: none (input file provided at runtime)"
-                new_tool_line += f"\n   Returns: output_video_path (processed video)"
-            elif "transcribe" in tool_name.lower():
-                new_tool_line = f"\n7. {tool_name} - {tool_description}"
-                new_tool_line += f"\n   Args: none (input file provided at runtime)"
-                new_tool_line += f"\n   Returns: transcription (text)"
-            else:
-                new_tool_line = f"\n7. {tool_name} - {tool_description}"
-                new_tool_line += f"\n   Args: none (input file provided at runtime)"
-                new_tool_line += f"\n   Returns: output_path (processed file)"
-            
-            lines.insert(insert_index, new_tool_line)
-            
-            # Update the existing tool list to include this new tool in relevant contexts
-            updated_prompt = '\n'.join(lines)
-            
-            # Update multiple references to available tools lists
-            tool_lists_to_update = [
-                ('"available_tools": ["blur_faces", "detect_faces", "blur"]',
-                 f'"available_tools": ["blur_faces", "detect_faces", "blur", "{tool_name}"]'),
-                ('ONLY use tools from the list above',
-                 f'ONLY use tools from the list above (including newly available: {tool_name})'),
-            ]
-            
-            for old_text, new_text in tool_lists_to_update:
-                updated_prompt = updated_prompt.replace(old_text, new_text)
-            
-            return updated_prompt
-        
-        return SYSTEM_PROMPT
+        # Check the registry for dynamically registered tools
+        try:
+            tool = registry.get(tool_name)
+            return tool is not None
+        except Exception:
+            return False
     
-    def _infer_tool_description(self, tool_name: str, user_request: str) -> str:
-        """Infer tool description based on the tool name and user request."""
-        request_lower = user_request.lower()
+    def _create_tool_request(self, tool_name: str, user_request: str, args: dict) -> str:
+        """Create a specific request for generating a tool based on context."""
+        # Build a descriptive request for the tool generator
+        request_parts = [f"Create a tool named '{tool_name}'"]
         
-        if "license plate" in request_lower:
-            return "Detect and blur license plates in video"
-        elif "transcribe" in request_lower:
-            return "Transcribe audio to text"
-        elif "text" in request_lower and ("detect" in request_lower or "blur" in request_lower):
-            return "Detect and blur text in video"
-        elif "object" in request_lower:
-            return "Detect and blur objects in video"
-        elif "background" in request_lower:
-            return "Remove or blur background in video"
-        else:
-            # Generic description
-            if "detect" in tool_name.lower():
-                return f"Custom detection tool for {user_request.lower()}"
-            elif any(word in tool_name.lower() for word in ["blur", "mute", "remove"]):
-                return f"Custom privacy protection tool for {user_request.lower()}"
-            else:
-                return f"Custom tool for {user_request.lower()}"
+        # Add context from the original user request
+        # request_parts.append(f"based on user request: '{user_request}'")
+        
+        # Add any args context
+        if args:
+            args_str = ", ".join(f"{k}={v}" for k, v in args.items())
+            request_parts.append(f"with parameters: {args_str}")
+        
+        # Add hints based on tool name patterns
+        if "license_plate" in tool_name.lower():
+            request_parts.append("- Should detect and blur license plates in video using cv2")
+        elif "transcribe" in tool_name.lower():
+            request_parts.append("- Should transcribe audio to text using whisper")
+        elif "background" in tool_name.lower():
+            request_parts.append("- Should remove or blur background in video using cv2")
+        elif "text" in tool_name.lower():
+            request_parts.append("- Should detect and blur text in video using cv2")
+        elif "object" in tool_name.lower():
+            request_parts.append("- Should detect and blur objects in video using cv2")
+        
+        return " ".join(request_parts)
     
     def save_manifest(self, manifest: dict, output_path: str):
         with open(output_path, 'w') as f:
@@ -232,36 +230,36 @@ if __name__ == "__main__":
     planner = PipelinePlanner(api_key=api_key)
     
     test_cases = [
-        # === BASIC VIDEO TESTS ===
+        # === BASIC VIDEO TESTS (built-in tools) ===
         "Blur faces in my video",
         "Just detect faces, don't blur",
         "Blur with kernel size 51",
         "Blur faces with very strong blur",
         "Detect and blur faces with kernel 15",
         
-        # === BASIC AUDIO TESTS ===
+        # === BASIC AUDIO TESTS (built-in tools) ===
         "Mute password mentions",
         "Use beep instead of mute for profanity",
         "Detect keywords 'credit card' and 'ssn'",
         "Silence mentions of 'address' and 'phone number'",
         "Beep out bad words",
         
-        # === MULTI-KEYWORD TESTS ===
+        # === MULTI-KEYWORD TESTS (built-in tools) ===
         "Mute 'password', 'username', 'email', and 'ssn'",
         "Remove mentions of medical terms like 'diagnosis' and 'prescription'",
         "Beep profanity words",
         
-        # === CUSTOM PARAMETERS ===
+        # === CUSTOM PARAMETERS (built-in tools) ===
         "Blur with kernel 91",
         "Use silence mode instead of beep",
         "Detect faces only, no processing",
         "Detect keywords only, don't mute",
         
-        # === CHAINING TESTS ===
+        # === CHAINING TESTS (built-in tools) ===
         "First detect faces, then blur with kernel 25",
         "Detect keywords then mute them with beep",
         
-        # === ERROR CASES - UNAVAILABLE TOOLS ===
+        # === TOOL GENERATION TESTS (should auto-generate) ===
         "Transcribe this audio",
         "Remove license plates from video",
         "Detect text in video",
@@ -270,9 +268,10 @@ if __name__ == "__main__":
         "Enhance video quality",
         "Detect objects in video",
         
-        # === ERROR CASES - MULTI-MODAL CONFUSION ===
+        # === MIXED TESTS (built-in + generated) ===
+        "Blur faces and remove license plates",
         "Blur faces and mute keywords 'password' and 'ssn'",
-        "Process both video and audio",
+        "Transcribe audio and blur faces in video",
         
         # === EDGE CASES ===
         "Blur everything in the video",
@@ -283,6 +282,7 @@ if __name__ == "__main__":
     total_time = 0
     success_count = 0
     error_count = 0
+    generated_count = 0
     results = {}
     for i, request in enumerate(test_cases, 1):
         start_time = time.time()
@@ -298,14 +298,21 @@ if __name__ == "__main__":
             if "error" in manifest:
                 outcome = 'error'
                 error_count += 1
-                print("Result: ERROR (expected for some tests)")
+                print("Result: ERROR")
+            elif "_generated_tools" in manifest:
+                outcome = 'generated'
+                generated_count += 1
+                success_count += 1
+                gen_tools = [t['generated'] for t in manifest['_generated_tools']]
+                print(f"Result: SUCCESS (generated tools: {gen_tools})")
             else:
                 outcome = 'success'
                 success_count += 1
-                print("Result: SUCCESS")
+                print("Result: SUCCESS (built-in tools only)")
                 
         except Exception as e:
             print(f"EXCEPTION: {e}")
+            outcome = 'exception'
             error_count += 1
         
         end_time = time.time()
@@ -323,6 +330,8 @@ if __name__ == "__main__":
     print('='*60)
     print(f"Total tests: {len(test_cases)}")
     print(f"Successful manifests: {success_count}")
+    print(f"  - Built-in tools only: {success_count - generated_count}")
+    print(f"  - With generated tools: {generated_count}")
     print(f"Error responses: {error_count}")
     print(f"Total time: {total_time:.2f}s")
     print(f"Average time per test: {total_time/len(test_cases):.2f}s")

@@ -4,5 +4,6 @@ data/results/
 data/samples/
 test*.py
 venv/
+.venv/
 models/
 .env

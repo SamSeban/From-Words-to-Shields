@@ -6,8 +6,11 @@ import time
 from typing import Dict, Any, Optional
 from groq import Groq
 from dotenv import load_dotenv
+import sys
 
 load_dotenv()
+
+project_root = sys.path[0]
 
 class ToolGenerator:
     """Generates custom privacy protection tools dynamically."""
@@ -34,8 +37,14 @@ CRITICAL REQUIREMENTS:
 - Use existing file patterns (data/results/ for outputs)
 - Generate working, runnable code
 
-IMPORTANT: DO NOT include file path arguments (video_path, audio_path, input_path) in the apply() method.
-File paths are injected at runtime by the execution system. Your tool should expect other parameters only.
+CRITICAL - FILE PATH PARAMETERS:
+The execution system inspects method signatures to inject file paths at runtime.
+You MUST declare file paths as EXPLICIT PARAMETERS in the apply() method signature:
+- For VIDEO tools: def apply(self, video_path: str, **kwargs)
+- For AUDIO tools: def apply(self, audio_path: str, **kwargs)
+- For tools that can work with either: def apply(self, video_path: str = None, audio_path: str = None, **kwargs)
+
+DO NOT use only **kwargs and then kwargs.get('video_path') - the executor won't inject the path!
 
 AVAILABLE LIBRARIES AND THEIR USES:
 - cv2: Video/image processing, face detection, object detection, image transformations
@@ -46,37 +55,92 @@ AVAILABLE LIBRARIES AND THEIR USES:
 - librosa: Audio analysis, feature extraction
 - soundfile: Audio I/O operations
 
-TOOL STRUCTURE TEMPLATE:
+TOOL STRUCTURE TEMPLATE FOR VIDEO TOOLS:
 ```python
 from tool_api import PrivacyTool
 from registry import register
-import cv2  # and other needed imports
+import cv2
 import numpy as np
 import os
 
-class YourCustomTool(PrivacyTool):
+class YourVideoTool(PrivacyTool):
     name = "your_tool_name"
     
-    def apply(self, **kwargs) -> Dict[str, Any]:
+    def apply(self, video_path: str, **kwargs):
         \"\"\"Apply the privacy protection operation.
         
-        NOTE: File paths (video_path/audio_path) are automatically injected by the execution system.
-        Do not expect them as explicit parameters - they will be available in kwargs.
+        Args:
+            video_path: Path to input video (injected by executor)
+            **kwargs: Additional arguments
         \"\"\"
-        # Get file path from kwargs (injected at runtime)
-        video_path = kwargs.get('video_path')  # for video tools
-        audio_path = kwargs.get('audio_path')  # for audio tools
+        # Create output directory
+        output_dir = os.path.join("data", "results")
+        os.makedirs(output_dir, exist_ok=True)
         
-        # Implementation here
-        # Return dict with results
-        return {{"output_path": "...", "summary": {{}}}}
+        # Process video
+        cap = cv2.VideoCapture(video_path)
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        
+        filename = os.path.splitext(os.path.basename(video_path))[0]
+        output_path = os.path.join(output_dir, f"{{filename}}_processed.mp4")
+        
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+        
+        frame_count = 0
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            # Process frame here
+            out.write(frame)
+            frame_count += 1
+        
+        cap.release()
+        out.release()
+        
+        return {{"output_path": output_path, "summary": {{"frames_processed": frame_count}}}}
     
-    def verify(self, **kwargs) -> Dict[str, Any]:
+    def verify(self, **kwargs):
         \"\"\"Verify the operation was successful.\"\"\"
-        # Implementation here
         return {{"verified": True, "details": {{}}}}
 
-TOOL = YourCustomTool()
+TOOL = YourVideoTool()
+register(TOOL)
+```
+
+TOOL STRUCTURE TEMPLATE FOR AUDIO TOOLS:
+```python
+from tool_api import PrivacyTool
+from registry import register
+import whisper
+import os
+
+class YourAudioTool(PrivacyTool):
+    name = "your_tool_name"
+    
+    def apply(self, audio_path: str, **kwargs):
+        \"\"\"Apply the audio processing operation.
+        
+        Args:
+            audio_path: Path to input audio (injected by executor)
+            **kwargs: Additional arguments
+        \"\"\"
+        # Create output directory
+        output_dir = os.path.join("data", "results")
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # Process audio here
+        # ...
+        
+        return {{"output_path": output_path, "summary": {{}}}}
+    
+    def verify(self, **kwargs):
+        return {{"verified": True, "details": {{}}}}
+
+TOOL = YourAudioTool()
 register(TOOL)
 ```
 
@@ -96,6 +160,7 @@ IMPLEMENTATION GUIDELINES:
 4. Save outputs to data/results/ directory
 5. Include performance metrics in results
 6. Handle edge cases and errors gracefully
+7. ALWAYS declare video_path or audio_path as explicit parameters in the method signature
 
 Generate ONLY the Python code, no explanations. Make it production-ready.
 
@@ -187,11 +252,11 @@ Tool request:"""
         
         # Determine appropriate directory based on tool type
         if 'detect' in tool_name.lower():
-            tool_dir = "/home/sam/Documents/GitHub/From-Words-to-Shields/tools/detectors"
+            tool_dir = f"{project_root}/tools/detectors"
         elif any(keyword in tool_name.lower() for keyword in ['blur', 'mute', 'transform', 'remove']):
-            tool_dir = "/home/sam/Documents/GitHub/From-Words-to-Shields/tools/transforms"  
+            tool_dir = f"{project_root}/tools/transforms"  
         else:
-            tool_dir = "/home/sam/Documents/GitHub/From-Words-to-Shields/tools/composites"
+            tool_dir = f"{project_root}/tools/composites"
         
         os.makedirs(tool_dir, exist_ok=True)
         
@@ -213,7 +278,6 @@ Tool request:"""
             import importlib.util
             
             # Add the project root to Python path if not already there
-            project_root = "/home/sam/Documents/GitHub/From-Words-to-Shields"
             if project_root not in sys.path:
                 sys.path.insert(0, project_root)
             
