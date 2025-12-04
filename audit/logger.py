@@ -24,7 +24,7 @@ def _write(event, msg=""):
 def workflow_start(prompt, file_path=None):
     """Log workflow start."""
     _start_times["workflow"] = datetime.now()
-    _write("WORKFLOW", f"START prompt=\"{prompt[:50]}{'...' if len(prompt)>50 else ''}\" file={file_path}")
+    _write("WORKFLOW", f"START prompt=\"{prompt}\" file={file_path}")
 
 
 def workflow_end(success):
@@ -127,6 +127,11 @@ def merge_end(success, output_path=None, error=None):
 def error(msg):
     """Log an error."""
     _write("ERROR", msg)
+
+
+def retry(attempt, max_attempts, error_msg):
+    """Log a retry attempt."""
+    _write("RETRY", f"attempt={attempt}/{max_attempts} error=\"{error_msg}\"")
 
 
 class AuditLog:

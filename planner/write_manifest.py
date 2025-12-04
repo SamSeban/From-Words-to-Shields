@@ -202,24 +202,12 @@ class PipelinePlanner():
         request_parts = [f"Create a tool named '{tool_name}'"]
         
         # Add context from the original user request
-        # request_parts.append(f"based on user request: '{user_request}'")
+        request_parts.append(f"based on user request: '{user_request}', note that part of the user request might already be covered by a built-in tool, only generate a new tool based on the tool name.")
         
         # Add any args context
         if args:
             args_str = ", ".join(f"{k}={v}" for k, v in args.items())
             request_parts.append(f"with parameters: {args_str}")
-        
-        # Add hints based on tool name patterns
-        if "license_plate" in tool_name.lower():
-            request_parts.append("- Should detect and blur license plates in video using cv2")
-        elif "transcribe" in tool_name.lower():
-            request_parts.append("- Should transcribe audio to text using whisper")
-        elif "background" in tool_name.lower():
-            request_parts.append("- Should remove or blur background in video using cv2")
-        elif "text" in tool_name.lower():
-            request_parts.append("- Should detect and blur text in video using cv2")
-        elif "object" in tool_name.lower():
-            request_parts.append("- Should detect and blur objects in video using cv2")
         
         return " ".join(request_parts)
     
