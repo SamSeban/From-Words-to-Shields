@@ -66,5 +66,5 @@ register(TOOL)
 if __name__ == "__main__":
     video_path='/home/daniel/Downloads/4.mp4'
 
-    for iteration in TOOL.apply(video_path=video_path, live=False):
+    for iteration in TOOL.apply(video_path='camera', live=True):
         pass

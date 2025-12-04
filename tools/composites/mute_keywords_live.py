@@ -174,3 +174,6 @@ class MuteKeywordsLive():
 
 TOOL = MuteKeywordsLive()
 register(TOOL)
+
+if __name__ == "__main__":
+    TOOL.detect_keyword(['fuck'])

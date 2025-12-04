@@ -145,9 +145,6 @@ class Blur(PrivacyTool):
                             blurred = cv2.GaussianBlur(roi, (kernel, kernel), 0)
                             frame[y1:y2, x1:x2] = blurred
 
-                # cv2.imshow("Face Blurring", frame)  # Disabled for non-live mode
-                # if cv2.waitKey(1) & 0xFF == ord('q'):
-                #     break
                 out.write(frame)
                 if frame_idx == total_frames - 1:
                     end_time = time.time()

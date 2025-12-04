@@ -108,7 +108,7 @@ class MuteSegments(PrivacyTool):
 
         with open(segments_path, 'r') as f:
             segments_data = json.load(f)
-
+    
         segments = segments_data.get("segments", [])
         sensitive_phrases = list(set(s['sensitive_content'] for s in segments))
 
