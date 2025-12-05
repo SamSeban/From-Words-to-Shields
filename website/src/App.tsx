@@ -5,6 +5,8 @@ import AbstractSection from './components/abstract';
 import SlidesDemoSection from './components/slidesDemo';
 import IntroductionSection from './components/introduction';
 import RelatedWorkSection from './components/related_work';
+import TechnicalApproachSection from './components/technicalApproach';
+
 
 function App() {
 
@@ -32,6 +34,7 @@ return (
       <SlidesDemoSection />
       <IntroductionSection />
       <RelatedWorkSection />
+      <TechnicalApproachSection />
     </main>
   </div>
 )

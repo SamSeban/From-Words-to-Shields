@@ -44,13 +44,22 @@ const RelatedWorkSection: React.FC = () => {
                 <td className="border border-gray-300 px-4 py-2">Scope Limitation. Focuses only on contextual leakage in text/audio summarization (no multimodal data sanitization).</td>
             </tr>
               <tr>
-                <td className="border border-gray-300 px-4 py-2 font-medium"><strong>Our Approach</strong></td>
-                <td className="border border-gray-300 px-4 py-2"><strong>Autonomous + Verified</strong></td>
-                <td className="border border-gray-300 px-4 py-2"><strong>High (NL + multimodal)</strong></td>
-                <td className="border border-gray-300 px-4 py-2"><strong>High (closed-loop)</strong></td>
-                <td className="border border-gray-300 px-4 py-2"><strong>Low</strong></td>
-                <td className="border border-gray-300 px-4 py-2"><strong>Runtime overhead</strong></td>
+              <td className="border border-gray-300 px-4 py-2 font-medium">PrivacyLens [Iravantchi23]</td>
+              <td className="border border-gray-300 px-4 py-2">On-device PII removal from RGB images, primarily using thermal sensing for robust person detection. No audio/speech support.</td>
+              <td className="border border-gray-300 px-4 py-2">Low (Hardware-Bound). Limited to a fixed library of sanitization modes. Cannot support custom, dynamic policies (e.g., "blur just kids' faces").</td>
+              <td className="border border-gray-300 px-4 py-2">Sensor Reliability. Verification relies on the thermal sensor reliably detecting the person to trigger pre-defined PII removal. No post-execution policy check.</td>
+              <td className="border border-gray-300 px-4 py-2">High. Requires custom hardware (thermal sensor, GPU on-device) and low-level system integration/development.</td>
+              <td className="border border-gray-300 px-4 py-2">Lack of Policy Nuance & Modality. Cannot interpret complex policies or handle audio/speech data. Limited to visual input.</td>
               </tr>
+              <tr className="bg-gray-50">
+                <td className="border border-gray-300 px-4 py-2 font-medium">Privacy-sensitive Objects Pixelation for Live Video Streaming</td>
+                <td className="border border-gray-300 px-4 py-2">Real-time video sanitization on edge devices using pre-defined object removal operators.</td>
+                <td className="border border-gray-300 px-4 py-2">Low. Supports only pre-specified objects and operator chains.</td>
+                <td className="border border-gray-300 px-4 py-2">Operator Checks. No semantic verification; relies on correct computer vision (CV) detection.</td>
+                <td className="border border-gray-300 px-4 py-2">High. Adding a new privacy rule requires adding new CV detectors or rules.</td>
+                <td className="border border-gray-300 px-4 py-2">Operator Rigidity. Cannot interpret custom language policies or generate new tools.</td>
+              </tr>
+
             </tbody>
           </table>
         </div>

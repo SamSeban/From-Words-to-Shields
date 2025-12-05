@@ -2,7 +2,7 @@ import React from 'react';
 
 const IntroductionSection: React.FC = () => {
   return (
-    <section className="mb-12 p-6 bg-gray-50 rounded-xl shadow-lg">
+    <section className="mb-12 p-6 bg-white rounded-xl shadow-lg">
       <h2 className="text-3xl font-bold text-indigo-700 mb-6">Introduction</h2>
       <div className="text-gray-700 leading-relaxed space-y-6">
         
@@ -25,7 +25,7 @@ const IntroductionSection: React.FC = () => {
   <p className='text-justify mb-2'>
     Current approaches to privacy enforcement follow two main paradigms:
   </p>
-  <ul className="list-disc list-inside space-y-2 text-justify">
+  <ul className="list-disc list-outside ml-6 space-y-2 text-justify">
     <li className='indent-4'> Systems like Peekaboo establish a trusted in-home hub that mediates and locally preprocesses 
       sensor data using developer-defined pipelines. While these systems provide strong architectural 
       guarantees and complete transparency, they suffer from low adaptability and high developer overhead. 
@@ -48,7 +48,7 @@ const IntroductionSection: React.FC = () => {
   <p className='text-justify mb-2'>
     Our approach introduces several novel elements that address the limitations of existing systems:
   </p>
-  <ul className="list-disc list-inside space-y-2 text-justify mb-2"> 
+  <ul className="list-disc list-outside ml-6 space-y-2 text-justify">
     <li className='indent-4'> 
       It enables autonomous tool generation in a sandboxed environment, allowing the system to 
       create custom privacy operators when existing tools are insufficient.
