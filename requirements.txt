@@ -22,6 +22,7 @@ groq>=0.4.0
 
 # Environment and utilities
 python-dotenv>=1.0.0
+psutil>=5.9.0
 
 # Live mode
 faster-whisper>=0.6.0

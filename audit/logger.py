@@ -4,6 +4,12 @@
 import os
 from datetime import datetime
 
+try:
+    import psutil
+    _HAS_PSUTIL = True
+except ImportError:
+    _HAS_PSUTIL = False
+
 _LOG_FILE = "audit/execution.log"
 _start_times = {}
 
@@ -87,6 +93,8 @@ def tool_end(step, tool_name, success, output_path=None, error=None):
         _write("TOOL", f"OK step={step} tool={tool_name}{out}{elapsed}")
     else:
         _write("TOOL", f"FAIL step={step} tool={tool_name} error=\"{error}\"{elapsed}")
+    # Log resource usage after tool execution
+    resource_snapshot(f"step_{step}")
 
 
 def tool_gen_start(tool_name):
@@ -132,6 +140,19 @@ def error(msg):
 def retry(attempt, max_attempts, error_msg):
     """Log a retry attempt."""
     _write("RETRY", f"attempt={attempt}/{max_attempts} error=\"{error_msg}\"")
+
+
+def resource_snapshot(context=""):
+    """Log current CPU and memory usage."""
+    if not _HAS_PSUTIL:
+        return
+    try:
+        process = psutil.Process(os.getpid())
+        cpu = psutil.cpu_percent(interval=None)  # Non-blocking
+        mem_mb = process.memory_info().rss / (1024 * 1024)
+        _write("RESOURCE", f"cpu={cpu:.1f}% mem={mem_mb:.1f}MB context={context}")
+    except Exception:
+        pass  # Don't fail if resource logging fails
 
 
 class AuditLog:
