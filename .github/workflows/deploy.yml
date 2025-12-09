@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./website   # run everything inside /website
+        working-directory: ./docs
 
     steps:
       - name: Checkout
@@ -39,7 +39,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./website/dist
+          path: ./docs/dist
 
   deploy:
     runs-on: ubuntu-latest
