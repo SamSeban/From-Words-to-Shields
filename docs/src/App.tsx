@@ -6,6 +6,7 @@ import SlidesDemoSection from './components/slidesDemo';
 import IntroductionSection from './components/introduction';
 import RelatedWorkSection from './components/related_work';
 import TechnicalApproachSection from './components/technicalApproach';
+import InteractiveDemo from './components/interactiveDemo';
 
 
 function App() {
@@ -31,6 +32,7 @@ return (
     <main className="grow  mx-auto p-4 sm:p-6 lg:p-8">
       <TeamPage />
       <AbstractSection />
+      <InteractiveDemo />
       <SlidesDemoSection />
       <IntroductionSection />
       <RelatedWorkSection />
