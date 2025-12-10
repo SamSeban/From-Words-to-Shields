@@ -284,13 +284,71 @@ def run_manifest(manifest, file_path=None, base_path=None):
                 "merge_error": err
             }
     elif last_video_output:
-        print(f"Video-only processing completed")
-        print(f"✓ Final output: {last_video_output}")
-        previous_result = {"output_path": last_video_output}
+        # Video-only processing - if original was a video, merge with original audio
+        if file_path and original_file_type == 'video':
+            print("Video-only processing on video input - merging with original audio...")
+            
+            results_dir = Path("data/results")
+            results_dir.mkdir(parents=True, exist_ok=True)
+            
+            base_name = Path(file_path).stem if file_path else "output"
+            merged_output = results_dir / f"{base_name}_processed.mp4"
+            
+            audit.merge_start(last_video_output, file_path)
+            merge_result = merge_video_audio(last_video_output, file_path, str(merged_output))
+            
+            if merge_result.get("success"):
+                audit.merge_end(True, merge_result["output_path"])
+                previous_result = {
+                    "output_path": merge_result["output_path"],
+                    "video_source": last_video_output,
+                    "audio_source": file_path,
+                    "merged": True
+                }
+                print(f"\n✓ Final merged output: {merge_result['output_path']}")
+            else:
+                err = merge_result.get('error', 'Unknown error')
+                audit.merge_end(False, error=err)
+                print(f"\n✗ Merge failed: {err}")
+                print(f"✓ Processed video output: {last_video_output}")
+                previous_result = {"output_path": last_video_output, "merged": False, "merge_error": err}
+        else:
+            print(f"Video-only processing completed")
+            print(f"✓ Final output: {last_video_output}")
+            previous_result = {"output_path": last_video_output}
     elif last_audio_output:
-        print(f"Audio-only processing completed")
-        print(f"✓ Final output: {last_audio_output}")
-        previous_result = {"output_path": last_audio_output}
+        # Audio-only processing - if original was a video, merge with original video
+        if file_path and original_file_type == 'video':
+            print("Audio-only processing on video input - merging with original video...")
+            
+            results_dir = Path("data/results")
+            results_dir.mkdir(parents=True, exist_ok=True)
+            
+            base_name = Path(file_path).stem if file_path else "output"
+            merged_output = results_dir / f"{base_name}_processed.mp4"
+            
+            audit.merge_start(file_path, last_audio_output)
+            merge_result = merge_video_audio(file_path, last_audio_output, str(merged_output))
+            
+            if merge_result.get("success"):
+                audit.merge_end(True, merge_result["output_path"])
+                previous_result = {
+                    "output_path": merge_result["output_path"],
+                    "video_source": file_path,
+                    "audio_source": last_audio_output,
+                    "merged": True
+                }
+                print(f"\n✓ Final merged output: {merge_result['output_path']}")
+            else:
+                err = merge_result.get('error', 'Unknown error')
+                audit.merge_end(False, error=err)
+                print(f"\n✗ Merge failed: {err}")
+                print(f"✓ Processed audio output: {last_audio_output}")
+                previous_result = {"output_path": last_audio_output, "merged": False, "merge_error": err}
+        else:
+            print(f"Audio-only processing completed")
+            print(f"✓ Final output: {last_audio_output}")
+            previous_result = {"output_path": last_audio_output}
     else:
         print("No output files generated")
     

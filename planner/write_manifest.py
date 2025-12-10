@@ -46,7 +46,7 @@ BUILT-IN TOOLS (pre-coded and available):
    Args: segments (list), mode (str: "silence" or "beep")
    Returns: output_audio_path (processed audio)
 
-6. mute_keywords - Mute keywords in audio (composite tool)
+6. mute_keywords - Mute keywords in audio (composite tool). This tool is a composite of detect_keywords and mute_segments, you can use it instead of using both when you need to use both.
    Args: user_intent, mode (str: "silence" or "beep")
    Returns: output_audio_path (processed audio)
 
