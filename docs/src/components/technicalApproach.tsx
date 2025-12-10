@@ -479,31 +479,14 @@ const TechnicalApproachSection: React.FC = () => {
 
         {/* 3.4 Hardware / Software Implementation */}
         <div>
-          <h3 className="text-2xl font-semibold text-gray-800 mb-4">3.4 Hardware / Software Implementation</h3>
+          <h3 className="text-2xl font-semibold text-gray-800 mb-4">3.4 Software Stack</h3>
           
           <div className="space-y-4">
-            <div>
-              <h4 className="text-lg font-semibold text-gray-700 mb-2">Hardware Setup</h4>
-              <p>
-                <strong className="text-red-600">[TODO: Describe your hardware setup]</strong>
-              </p>
-              <ul className="list-disc list-inside space-y-2 ml-4 mt-2">
-                <li><strong className="text-red-600">Development Machine:</strong> [Specs: CPU, GPU, RAM]</li>
-                <li><strong className="text-red-600">Edge Device:</strong> [Raspberry Pi model, peripherals, sensors]</li>
-                <li><strong className="text-red-600">Sensors:</strong> [Camera, microphone, other sensors if applicable]</li>
-              </ul>
-              
-              <div className="bg-gray-100 border-2 border-dashed border-gray-300 p-8 rounded-lg text-center mt-4">
-                <p className="text-gray-500 italic">
-                  [Photo: Hardware setup showing Raspberry Pi, sensors, and connections]
-                </p>
-              </div>
-            </div>
+
             
             <div>
-              <h4 className="text-lg font-semibold text-gray-700 mb-2">Software Stack</h4>
               <p>
-                <strong className="text-red-600">[TODO: List all frameworks and libraries with versions]</strong>
+                <strong className="text-red-600">[TODO: List all frameworks and libraries with versions. Edited: I think just the main stuff is enough, no need for requirements.txt here.]</strong>
               </p>
               
               <div className="overflow-x-auto mt-2">
@@ -518,8 +501,8 @@ const TechnicalApproachSection: React.FC = () => {
                   <tbody>
                     <tr>
                       <td className="border border-gray-300 px-4 py-2">LLM Agent</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[llama-3.3-70b-versatile / API]</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[Planning & tool generation]</td>
+                      <td className="border border-gray-300 px-4 py-2"> llama-3.3-70b-versatile / API</td>
+                      <td className="border border-gray-300 px-4 py-2">Planning & tool generation</td>
                     </tr>
                     <tr className="bg-gray-50">
                       <td className="border border-gray-300 px-4 py-2">Agent Framework</td>
@@ -528,24 +511,26 @@ const TechnicalApproachSection: React.FC = () => {
                     </tr>
                     <tr>
                       <td className="border border-gray-300 px-4 py-2">Face Detection</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[YuNet / OpenCV]</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[Face detection & blurring]</td>
+                      <td className="border border-gray-300 px-4 py-2">YuNet / OpenCV</td>
+                      <td className="border border-gray-300 px-4 py-2">Face detection & blurring</td>
                     </tr>
                     <tr className="bg-gray-50">
-                      <td className="border border-gray-300 px-4 py-2">Speech Processing</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[Whisper]</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[Audio transcription]</td>
-                    </tr>
-                    <tr>
                       <td className="border border-gray-300 px-4 py-2">Tracking</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[Kalman Filter]</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[Face tracking across frames]</td>
+                      <td className="border border-gray-300 px-4 py-2 ">KCF tracker and Kalman Filter</td>
+                      <td className="border border-gray-300 px-4 py-2 ">Face tracking across frames and fallback</td>
                     </tr>
+                    <tr >
+                      <td className="border border-gray-300 px-4 py-2">Speech Processing Offline</td>
+                      <td className="border border-gray-300 px-4 py-2">Whisper</td>
+                      <td className="border border-gray-300 px-4 py-2">Audio transcription</td>
+                    </tr>
+                    
                     <tr className="bg-gray-50">
-                      <td className="border border-gray-300 px-4 py-2">Sandbox</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[Docker / Python subprocess]</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[Isolated code execution]</td>
+                      <td className="border border-gray-300 px-4 py-2">Speech Processing Live</td>
+                      <td className="border border-gray-300 px-4 py-2 ">FasterWhisper</td>
+                      <td className="border border-gray-300 px-4 py-2 ">Audio transcription</td>
                     </tr>
+
                   </tbody>
                 </table>
               </div>
@@ -554,63 +539,7 @@ const TechnicalApproachSection: React.FC = () => {
         </div>
 
         {/* 3.5 Key Design Decisions & Rationale */}
-        <div>
-          <h3 className="text-2xl font-semibold text-gray-800 mb-4">3.5 Key Design Decisions & Rationale</h3>
-          
-          <div className="space-y-4">
-            <div>
-              <h4 className="text-lg font-semibold text-gray-700 mb-2">Why an Agent-Based Approach?</h4>
-              <p>
-                <strong className="text-red-600">[TODO: Explain why you chose LLM agents over manual pipelines - 
-                flexibility, adaptability, reduced engineering effort]</strong>
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="text-lg font-semibold text-gray-700 mb-2">Why Closed-Loop Verification?</h4>
-              <p>
-                <strong className="text-red-600">[TODO: Explain the need for automatic verification and recovery - 
-                LLMs can make mistakes, need to catch privacy violations]</strong>
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="text-lg font-semibold text-gray-700 mb-2">Why Sandboxed Tool Generation?</h4>
-              <p>
-                <strong className="text-red-600">[TODO: Explain security concerns with executing LLM-generated code, 
-                why sandbox is necessary]</strong>
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="text-lg font-semibold text-gray-700 mb-2">Model Selection Rationale</h4>
-              <p>
-                <strong className="text-red-600">[TODO: Why llama-3.3-70b-versatile? Why YuNet for faces? 
-                Why Whisper for speech? Consider accuracy, speed, resource constraints]</strong>
-              </p>
-            </div>
-            
-            <div>
-              <h4 className="text-lg font-semibold text-gray-700 mb-2">Tradeoffs Made</h4>
-              <p>
-                <strong className="text-red-600">[TODO: Discuss key tradeoffs:]</strong>
-              </p>
-              <ul className="list-disc list-inside space-y-2 ml-4 mt-2">
-                <li><strong>Accuracy vs. Latency:</strong> <span className="text-red-600">[How did you balance these?]</span></li>
-                <li><strong>Flexibility vs. Security:</strong> <span className="text-red-600">[Allowing tool generation vs. only using pre-built tools]</span></li>
-                <li><strong>Generality vs. Performance:</strong> <span className="text-red-600">[Supporting multiple modalities vs. optimizing for one]</span></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h4 className="text-lg font-semibold text-gray-700 mb-2">Alternatives Considered</h4>
-              <p>
-                <strong className="text-red-600">[TODO: What other approaches did you consider and why did you reject them? 
-                E.g., fine-tuning vs. prompting, different LLMs, different verification strategies]</strong>
-              </p>
-            </div>
-          </div>
-        </div>
+        
 
       </div>
     </section>
