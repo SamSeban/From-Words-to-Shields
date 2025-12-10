@@ -65,9 +65,9 @@ const RelatedWorkSection: React.FC = () => {
         </div>
         <p className="text-sm text-gray-600 italic mb-2">Table 2: Comparison of privacy enforcement approaches</p>
 
-        {/* Individual Work Discussions */}
+        Individual Work Discussions (Need to add them ???)
         <div className="space-y-4 mt-6">
-          <div>
+          {/* <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Peekaboo: Hub-Based Privacy Enforcement [Jin22]</h3>
             <p  className='text-justify'>
               <strong>What they did:</strong> Jin et al. proposed Peekaboo, a trusted in-home hub that mediates smart home 
@@ -83,9 +83,9 @@ const RelatedWorkSection: React.FC = () => {
               privacy rules, our system uses LLM agents to automatically generate and adapt pipelines from natural language 
               requirements.
             </p>
-          </div>
+          </div> */}
 
-          <div>
+          {/* <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Multi-Agent LLM Reasoning for Privacy [Li24]</h3>
             <p  className='text-justify'>
               <strong>What they did:</strong> Li et al. demonstrated using LLMs as multi-agent reasoning frameworks to 
@@ -100,7 +100,7 @@ const RelatedWorkSection: React.FC = () => {
               a closed-loop verification system with automated recovery and comprehensive audit logs to ensure correctness 
               and trustworthiness.
             </p>
-          </div>
+          </div> */}
 
           <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400">
             <p className="text-sm text-gray-700">

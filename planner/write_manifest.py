@@ -140,7 +140,7 @@ class PipelinePlanner():
         failed_tools = []
         
         for tool_name, step in tools_to_generate:
-            print(f"🔧 Tool '{tool_name}' not found. Generating...")
+            print(f"Tool '{tool_name}' not found. Generating...")
             
             # Create a specific request for this tool based on the user's original intent
             tool_request = self._create_tool_request(tool_name, user_request, step.get("args", {}))
@@ -151,7 +151,7 @@ class PipelinePlanner():
             if generation_result.get("success"):
                 actual_tool_name = generation_result['tool_name']
                 audit.tool_gen_end(tool_name, True, actual_tool_name)
-                print(f"✅ Successfully generated tool: {actual_tool_name}")
+                print(f"Successfully generated tool: {actual_tool_name}")
                 generated_tools.append({
                     "requested": tool_name,
                     "generated": actual_tool_name,
@@ -167,7 +167,7 @@ class PipelinePlanner():
             else:
                 error_msg = generation_result.get('error', 'Unknown error')
                 audit.tool_gen_end(tool_name, False, error=error_msg)
-                print(f"❌ Failed to generate tool '{tool_name}': {error_msg}")
+                print(f"Failed to generate tool '{tool_name}': {error_msg}")
                 failed_tools.append({
                     "tool": tool_name,
                     "error": error_msg
@@ -214,118 +214,4 @@ class PipelinePlanner():
     def save_manifest(self, manifest: dict, output_path: str):
         with open(output_path, 'w') as f:
             json.dump(manifest, f, indent=2)
-
-if __name__ == "__main__":
-    load_dotenv()
-    api_key = os.environ.get("GROQ_API_KEY")
-    
-    planner = PipelinePlanner(api_key=api_key)
-    
-    test_cases = [
-        # === BASIC VIDEO TESTS (built-in tools) ===
-        "Blur faces in my video",
-        "Just detect faces, don't blur",
-        "Blur with kernel size 51",
-        "Blur faces with very strong blur",
-        "Detect and blur faces with kernel 15",
-        
-        # === BASIC AUDIO TESTS (built-in tools) ===
-        "Mute password mentions",
-        "Use beep instead of mute for profanity",
-        "Detect keywords 'credit card' and 'ssn'",
-        "Silence mentions of 'address' and 'phone number'",
-        "Beep out bad words",
-        
-        # === MULTI-KEYWORD TESTS (built-in tools) ===
-        "Mute 'password', 'username', 'email', and 'ssn'",
-        "Remove mentions of medical terms like 'diagnosis' and 'prescription'",
-        "Beep profanity words",
-        
-        # === CUSTOM PARAMETERS (built-in tools) ===
-        "Blur with kernel 91",
-        "Use silence mode instead of beep",
-        "Detect faces only, no processing",
-        "Detect keywords only, don't mute",
-        
-        # === CHAINING TESTS (built-in tools) ===
-        "First detect faces, then blur with kernel 25",
-        "Detect keywords then mute them with beep",
-        
-        # === TOOL GENERATION TESTS (should auto-generate) ===
-        "Transcribe this audio",
-        "Remove license plates from video",
-        "Detect text in video",
-        "Convert speech to text",
-        "Remove background noise",
-        "Enhance video quality",
-        "Detect objects in video",
-        
-        # === MIXED TESTS (built-in + generated) ===
-        "Blur faces and remove license plates",
-        "Blur faces and mute keywords 'password' and 'ssn'",
-        "Transcribe audio and blur faces in video",
-        
-        # === EDGE CASES ===
-        "Blur everything in the video",
-        "Mute the entire audio",
-        "Don't do anything",
-    ]
-
-    total_time = 0
-    success_count = 0
-    error_count = 0
-    generated_count = 0
-    results = {}
-    for i, request in enumerate(test_cases, 1):
-        start_time = time.time()
-        print(f"\n{'='*60}")
-        print(f"TEST {i}/{len(test_cases)}: {request}")
-        print('='*60)
-        
-        
-        try:
-            manifest = planner.plan(request)
-            print(json.dumps(manifest, indent=2))
-            
-            if "error" in manifest:
-                outcome = 'error'
-                error_count += 1
-                print("Result: ERROR")
-            elif "_generated_tools" in manifest:
-                outcome = 'generated'
-                generated_count += 1
-                success_count += 1
-                gen_tools = [t['generated'] for t in manifest['_generated_tools']]
-                print(f"Result: SUCCESS (generated tools: {gen_tools})")
-            else:
-                outcome = 'success'
-                success_count += 1
-                print("Result: SUCCESS (built-in tools only)")
-                
-        except Exception as e:
-            print(f"EXCEPTION: {e}")
-            outcome = 'exception'
-            error_count += 1
-        
-        end_time = time.time()
-        test_time = end_time - start_time
-        total_time += test_time
-        results[i] = {'manifest': manifest, 'result': outcome, 'time': test_time}
-        print(f"Time: {test_time:.2f}s")
-    
-
-    with open('planner_outcome.json', 'w') as f:
-        json.dump(results, f, indent=2)
-    # Summary
-    print(f"\n{'='*60}")
-    print("SUMMARY")
-    print('='*60)
-    print(f"Total tests: {len(test_cases)}")
-    print(f"Successful manifests: {success_count}")
-    print(f"  - Built-in tools only: {success_count - generated_count}")
-    print(f"  - With generated tools: {generated_count}")
-    print(f"Error responses: {error_count}")
-    print(f"Total time: {total_time:.2f}s")
-    print(f"Average time per test: {total_time/len(test_cases):.2f}s")
-    print('='*60)
 
