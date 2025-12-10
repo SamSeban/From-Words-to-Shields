@@ -172,7 +172,7 @@ class AnonymizeVoice(PrivacyTool):
 TOOL = AnonymizeVoice()
 register(TOOL)`
     },
-    resultVideo: './jn_anon.mp4',
+    resultVideo: './jn_anonymized.mp4',
     terminalOutput: [
       '$ python cli.py',
       '> Enter your prompt: Fully anonymize the people in this video',
@@ -422,7 +422,7 @@ const InteractiveDemo: React.FC = () => {
               </div>
               <div 
                 ref={terminalRef}
-                className="p-4 font-mono text-sm h-72 overflow-y-auto"
+                className="p-4 font-mono text-sm h-72 overflow-y-auto text-left"
               >
                 {terminalLines.map((line, idx) => (
                   <div 

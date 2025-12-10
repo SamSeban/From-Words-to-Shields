@@ -28,7 +28,7 @@ const RelatedWorkSection: React.FC = () => {
             </thead>
             <tbody>
               <tr>
-                <td className="border border-gray-300 px-4 py-2 font-medium">Peekaboo [Jin22]</td>
+                <td className="border border-gray-300 px-4 py-2 font-medium"><a href="https://arxiv.org/pdf/2204.04540" target="_blank" rel="noopener noreferrer">Peekaboo [Jin22]</a></td>
                 <td className="border border-gray-300 px-4 py-2">Enforced by a structured, developer-written Manifest and fixed local operators.</td>
                 <td className="border border-gray-300 px-4 py-2">Low (Static). Limited to a fixed set of operators; cannot handle novel or custom logic.</td>
                 <td className="border border-gray-300 px-4 py-2">Auditable Manifest. Transparency is from a human-readable, deterministic policy (manifest).</td>
@@ -36,7 +36,7 @@ const RelatedWorkSection: React.FC = () => {
                 <td className="border border-gray-300 px-4 py-2">Static Inflexibility. Cannot dynamically adapt or generate new privacy enforcement logic.</td>
               </tr>
               <tr className="bg-gray-50">
-                <td className="border border-gray-300 px-4 py-2 font-medium">1-2-3 Check [Li24]</td>
+                <td className="border border-gray-300 px-4 py-2 font-medium"><a href="https://arxiv.org/pdf/2508.07667" target="_blank" rel="noopener noreferrer">1-2-3 Check [Li24]</a></td>
                 <td className="border border-gray-300 px-4 py-2">Multi-agent system decomposes privacy reasoning to adhere to Contextual Integrity (CI) norms.</td>
                 <td className="border border-gray-300 px-4 py-2">Moderate. Adapts by classifying and enforcing rules based on the dynamic context (who, what, where) of the input.</td>
                 <td className="border border-gray-300 px-4 py-2">Checker Agent. A dedicated agent validates output against CI norms, substantially reducing information leakage.</td>
@@ -44,7 +44,7 @@ const RelatedWorkSection: React.FC = () => {
                 <td className="border border-gray-300 px-4 py-2">Scope Limitation. Focuses only on contextual leakage in text/audio summarization (no multimodal data sanitization).</td>
             </tr>
               <tr>
-              <td className="border border-gray-300 px-4 py-2 font-medium">PrivacyLens [Iravantchi23]</td>
+              <td className="border border-gray-300 px-4 py-2 font-medium"><a href="https://petsymposium.org/popets/2024/popets-2024-0146.pdf" target="_blank" rel="noopener noreferrer">PrivacyLens [Iravantchi23]</a></td>
               <td className="border border-gray-300 px-4 py-2">On-device PII removal from RGB images, primarily using thermal sensing for robust person detection. No audio/speech support.</td>
               <td className="border border-gray-300 px-4 py-2">Low (Hardware-Bound). Limited to a fixed library of sanitization modes. Cannot support custom, dynamic policies (e.g., "blur just kids' faces").</td>
               <td className="border border-gray-300 px-4 py-2">Sensor Reliability. Verification relies on the thermal sensor reliably detecting the person to trigger pre-defined PII removal. No post-execution policy check.</td>
@@ -52,14 +52,21 @@ const RelatedWorkSection: React.FC = () => {
               <td className="border border-gray-300 px-4 py-2">Lack of Policy Nuance & Modality. Cannot interpret complex policies or handle audio/speech data. Limited to visual input.</td>
               </tr>
               <tr className="bg-gray-50">
-                <td className="border border-gray-300 px-4 py-2 font-medium">Privacy-sensitive Objects Pixelation for Live Video Streaming</td>
+                <td className="border border-gray-300 px-4 py-2 font-medium"><a href="https://arxiv.org/pdf/2101.00604" target="_blank" rel="noopener noreferrer">Privacy-sensitive Objects Pixelation for Live Video Streaming</a></td>
                 <td className="border border-gray-300 px-4 py-2">Real-time video sanitization on edge devices using pre-defined object removal operators.</td>
                 <td className="border border-gray-300 px-4 py-2">Low. Supports only pre-specified objects and operator chains.</td>
                 <td className="border border-gray-300 px-4 py-2">Operator Checks. No semantic verification; relies on correct computer vision (CV) detection.</td>
                 <td className="border border-gray-300 px-4 py-2">High. Adding a new privacy rule requires adding new CV detectors or rules.</td>
                 <td className="border border-gray-300 px-4 py-2">Operator Rigidity. Cannot interpret custom language policies or generate new tools.</td>
               </tr>
-
+              <tr>
+                <td className="border border-gray-300 px-4 py-2 font-medium"><a href="https://arxiv.org/pdf/2508.00321" target="_blank" rel="noopener noreferrer">SituGuard</a></td>
+                <td className="border border-gray-300 px-4 py-2">LLM-powered generation of fine-grained visual privacy rules using a structured context schema (sensitivity, spatial zone, social presence) to determine what must be anonymized in real time.</td>
+                <td className="border border-gray-300 px-4 py-2">Moderate-High. Adapts dynamically to changes in scene context and user privacy profiles, but is limited to vision-based transformations and cannot generate new, executable sanitization tools.</td>
+                <td className="border border-gray-300 px-4 py-2">LLM- and human-evaluated policy appropriateness scoring; no true post-execution verification. System trusts the VLM’s policy reasoning without enforcing correctness on the actual anonymized output.</td>
+                <td className="border border-gray-300 px-4 py-2">Moderate. Developers design the multi-dimensional schema, prompt templates, and integration pipeline, but do not create per-application policies, these are generated by the LLM.</td>
+                <td className="border border-gray-300 px-4 py-2">Vision-only and policy-level: produces rules but not executable pipelines. Cannot perform multimodal sanitization (audio/tabular) or autonomously refine transformations; strong dependence on accurate VLM perception.</td>
+              </tr>
             </tbody>
           </table>
         </div>
