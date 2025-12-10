@@ -7,6 +7,8 @@ import IntroductionSection from './components/introduction';
 import RelatedWorkSection from './components/related_work';
 import TechnicalApproachSection from './components/technicalApproach';
 import InteractiveDemo from './components/interactiveDemo';
+import ResultsSection from './components/results';
+import ConclusionSection from './components/conclusion';
 
 
 function App() {
@@ -37,6 +39,8 @@ return (
       <IntroductionSection />
       <RelatedWorkSection />
       <TechnicalApproachSection />
+      <ResultsSection />
+      <ConclusionSection />
     </main>
   </div>
 )
