@@ -27,7 +27,7 @@ const SlidesDemoSection: React.FC = () => {
             <div className="flex items-center justify-center">
               <FileText className="w-5 h-5 text-indigo-600 mr-2 shrink-0" />
               <a 
-                href="/path/to/final-slides.pdf" 
+                href="./final_presentation_group12.pdf" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-indigo-600 hover:text-indigo-800 hover:underline truncate"
