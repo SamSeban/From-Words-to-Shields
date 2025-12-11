@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Video } from 'lucide-react';
+import { FileText } from 'lucide-react';
 
 const SlidesDemoSection: React.FC = () => {
   return (
