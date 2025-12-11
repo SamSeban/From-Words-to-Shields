@@ -12,14 +12,14 @@ const Navbar: React.FC = () => {
             From Words to Shields: Agentic Privacy for Smart Sensors
           </h1>
           <p className="text-gray-400 mt-2 text-lg font-medium">
-            Course project website for EC M202A / CS M213A at UCLA
+            Course project website for ECE M202A / CS M213A at UCLA
           </p>
         </div>
         {/* Download Links (minimal, with icons) */}
         <div className="flex items-center text-sm font-medium" style={{ gap: '3rem' }}>
           {/* GitHub Repo Link (Kept original SVG for GitHub logo consistency) */}
           <a 
-            href="https://github.com/SamSeban/From-Words-to-Shields" 
+            href="https://github.com/SamSeban/ECM202A_2025Fall_Project_12" 
             className="flex items-center text-indigo-400 hover:text-indigo-300 transition-colors" 
             style={{ gap: '0.5rem' }}
             target="_blank"
@@ -32,10 +32,10 @@ const Navbar: React.FC = () => {
           
           {/* ZIP Download Link (Now with Download icon) */}
           <a 
-            href="#zip-download" 
+            href="https://github.com/SamSeban/ECM202A_2025Fall_Project_12/releases" 
             className="flex items-center text-indigo-400 hover:text-indigo-300 transition-colors" 
             style={{ gap: '0.5rem' }}
-            onClick={(e) => { e.preventDefault(); console.log('Simulating link click to Download ZIP'); }}
+            target="_blank"
           >
             <Download className="w-5 h-5" />
             <span>Download ZIP</span>
@@ -43,10 +43,10 @@ const Navbar: React.FC = () => {
           
           {/* TAR Download Link (Now with Download icon) */}
           <a 
-            href="#tar-download" 
+            href="https://github.com/SamSeban/ECM202A_2025Fall_Project_12/releases" 
             className="flex items-center text-indigo-400 hover:text-indigo-300 transition-colors" 
             style={{ gap: '0.5rem' }}
-            onClick={(e) => { e.preventDefault(); console.log('Simulating link click to Download TAR'); }}
+            target="_blank"
           >
             <Download className="w-5 h-5" />
             <span>Download TAR</span>

@@ -470,6 +470,10 @@ const TechnicalApproachSection: React.FC = () => {
             
             
             <div>
+<h4 className="text-center text-lg font-semibold text-gray-700 mb-2">Tool Generation</h4>
+<p className="mb-3 text-justify">
+  When the planner identifies a tool that doesn't exist in the registry, the tool generator dynamically creates it. The generator uses the same LLM (llama-3.3-70b-versatile) with a specialized system prompt containing: (1) a whitelist of allowed libraries (cv2, numpy, whisper, pydub, etc.) for sandbox safety, (2) code templates showing the required structure, a Python class inheriting from <code className="bg-gray-100 px-1 rounded">PrivacyTool</code> with <code className="bg-gray-100 px-1 rounded">apply()</code> and <code className="bg-gray-100 px-1 rounded">verify()</code> methods, and (3) implementation guidelines for video/audio processing patterns. The LLM generates complete Python code, which is then cleaned (removing markdown syntax), saved to the appropriate directory based on tool type (detectors/, transforms/, or composites/), and dynamically imported into the runtime registry using Python's <code className="bg-gray-100 px-1 rounded">importlib</code>. This allows newly generated tools to be immediately available for execution without restarting the system.
+</p>
 
               
 
@@ -485,9 +489,6 @@ const TechnicalApproachSection: React.FC = () => {
 
             
             <div>
-              <p>
-                <strong className="text-red-600">[TODO: List all frameworks and libraries with versions. Edited: I think just the main stuff is enough, no need for requirements.txt here.]</strong>
-              </p>
               
               <div className="overflow-x-auto mt-2">
                 <table className="w-full border-collapse border border-gray-300">
@@ -505,27 +506,22 @@ const TechnicalApproachSection: React.FC = () => {
                       <td className="border border-gray-300 px-4 py-2">Planning & tool generation</td>
                     </tr>
                     <tr className="bg-gray-50">
-                      <td className="border border-gray-300 px-4 py-2">Agent Framework</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[LangChain / LlamaIndex]</td>
-                      <td className="border border-gray-300 px-4 py-2 text-red-600">[Agent orchestration]</td>
-                    </tr>
-                    <tr>
                       <td className="border border-gray-300 px-4 py-2">Face Detection</td>
                       <td className="border border-gray-300 px-4 py-2">YuNet / OpenCV</td>
                       <td className="border border-gray-300 px-4 py-2">Face detection & blurring</td>
                     </tr>
-                    <tr className="bg-gray-50">
+                    <tr>
                       <td className="border border-gray-300 px-4 py-2">Tracking</td>
                       <td className="border border-gray-300 px-4 py-2 ">KCF tracker and Kalman Filter</td>
                       <td className="border border-gray-300 px-4 py-2 ">Face tracking across frames and fallback</td>
                     </tr>
-                    <tr >
+                    <tr className="bg-gray-50">
                       <td className="border border-gray-300 px-4 py-2">Speech Processing Offline</td>
                       <td className="border border-gray-300 px-4 py-2">Whisper</td>
                       <td className="border border-gray-300 px-4 py-2">Audio transcription</td>
                     </tr>
                     
-                    <tr className="bg-gray-50">
+                    <tr>
                       <td className="border border-gray-300 px-4 py-2">Speech Processing Live</td>
                       <td className="border border-gray-300 px-4 py-2 ">FasterWhisper</td>
                       <td className="border border-gray-300 px-4 py-2 ">Audio transcription</td>
@@ -533,6 +529,7 @@ const TechnicalApproachSection: React.FC = () => {
 
                   </tbody>
                 </table>
+                <p className="text-sm text-gray-600 italic mb-2 text-center mt-4">Table 3: Software Stack used in the system</p>
               </div>
             </div>
           </div>

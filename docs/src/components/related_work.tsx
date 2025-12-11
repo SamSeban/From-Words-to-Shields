@@ -52,7 +52,7 @@ const RelatedWorkSection: React.FC = () => {
               <td className="border border-gray-300 px-4 py-2">Lack of Policy Nuance & Modality. Cannot interpret complex policies or handle audio/speech data. Limited to visual input.</td>
               </tr>
               <tr className="bg-gray-50">
-                <td className="border border-gray-300 px-4 py-2 font-medium"><a href="https://arxiv.org/pdf/2101.00604" target="_blank" rel="noopener noreferrer">Privacy-sensitive Objects Pixelation for Live Video Streaming</a></td>
+                <td className="border border-gray-300 px-4 py-2 font-medium"><a href="https://arxiv.org/pdf/2101.00604" target="_blank" rel="noopener noreferrer">Privacy-sensitive Objects Pixelation for Live Video Streaming [Zhou21]</a></td>
                 <td className="border border-gray-300 px-4 py-2">Real-time video sanitization on edge devices using pre-defined object removal operators.</td>
                 <td className="border border-gray-300 px-4 py-2">Low. Supports only pre-specified objects and operator chains.</td>
                 <td className="border border-gray-300 px-4 py-2">Operator Checks. No semantic verification; relies on correct computer vision (CV) detection.</td>
@@ -60,7 +60,7 @@ const RelatedWorkSection: React.FC = () => {
                 <td className="border border-gray-300 px-4 py-2">Operator Rigidity. Cannot interpret custom language policies or generate new tools.</td>
               </tr>
               <tr>
-                <td className="border border-gray-300 px-4 py-2 font-medium"><a href="https://arxiv.org/pdf/2508.00321" target="_blank" rel="noopener noreferrer">SituGuard</a></td>
+                <td className="border border-gray-300 px-4 py-2 font-medium"><a href="https://arxiv.org/pdf/2508.00321" target="_blank" rel="noopener noreferrer">SituGuard [Zhang25]</a></td>
                 <td className="border border-gray-300 px-4 py-2">LLM-powered generation of fine-grained visual privacy rules using a structured context schema (sensitivity, spatial zone, social presence) to determine what must be anonymized in real time.</td>
                 <td className="border border-gray-300 px-4 py-2">Moderate-High. Adapts dynamically to changes in scene context and user privacy profiles, but is limited to vision-based transformations and cannot generate new, executable sanitization tools.</td>
                 <td className="border border-gray-300 px-4 py-2">LLM- and human-evaluated policy appropriateness scoring; no true post-execution verification. System trusts the VLM’s policy reasoning without enforcing correctness on the actual anonymized output.</td>
@@ -71,10 +71,9 @@ const RelatedWorkSection: React.FC = () => {
           </table>
         </div>
         <p className="text-sm text-gray-600 italic mb-2">Table 2: Comparison of privacy enforcement approaches</p>
-
-        Individual Work Discussions (Need to add them ???)
+{/*
         <div className="space-y-4 mt-6">
-          {/* <div>
+           <div>
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Peekaboo: Hub-Based Privacy Enforcement [Jin22]</h3>
             <p  className='text-justify'>
               <strong>What they did:</strong> Jin et al. proposed Peekaboo, a trusted in-home hub that mediates smart home 
@@ -107,15 +106,8 @@ const RelatedWorkSection: React.FC = () => {
               a closed-loop verification system with automated recovery and comprehensive audit logs to ensure correctness 
               and trustworthiness.
             </p>
-          </div> */}
-
-          <div className="p-4 bg-yellow-50 border-l-4 border-yellow-400">
-            <p className="text-sm text-gray-700">
-              <strong>Note:</strong> Additional related works to be added: tool generation frameworks, sandboxing approaches, 
-              multimodal processing systems, differential privacy techniques, etc.
-            </p>
-          </div>
-        </div>
+          </div> 
+        </div> */}
 
       </div>
     </section>

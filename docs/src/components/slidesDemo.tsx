@@ -16,7 +16,7 @@ const SlidesDemoSection: React.FC = () => {
             <div className="flex items-center justify-center">
               <FileText className="w-5 h-5 text-indigo-600 mr-2 shrink-0" />
               <a 
-                href="src/assets/midterm_presentation.pdf" 
+                href="./midterm_presentation.pdf" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-indigo-600 hover:text-indigo-800 hover:underline truncate"
@@ -38,7 +38,7 @@ const SlidesDemoSection: React.FC = () => {
           </div>
         </div>
 
-        {/* === RIGHT COLUMN: Demo Content === */}
+        {/* === RIGHT COLUMN: Demo Content === 
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-gray-800 mb-3">Demo</h3>
           <div className="flex items-center justify-center">
@@ -53,6 +53,7 @@ const SlidesDemoSection: React.FC = () => {
             </a>
           </div>
         </div>
+        */}
       </div>
     </section>
   );

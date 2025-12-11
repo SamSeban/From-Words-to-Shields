@@ -45,7 +45,7 @@ const ResultsSection: React.FC = () => {
                   <td className="px-3 py-1.5 border border-gray-300 font-medium">Error Types</td>
                   <td className="px-3 py-1.5 border border-gray-300 text-gray-600">Breakdown of error categories</td>
                 </tr>
-                <tr>
+                <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-3 py-1.5 border border-gray-300 font-medium">Failure Points</td>
                   <td className="px-3 py-1.5 border border-gray-300 text-gray-600">Which tools fail most frequently</td>
                 </tr>
@@ -111,7 +111,7 @@ const ResultsSection: React.FC = () => {
                   <td className="px-3 py-1.5 border border-gray-300 font-medium">Throughput</td>
                   <td className="px-3 py-1.5 border border-gray-300 text-gray-600">Workflows processed per hour</td>
                 </tr>
-                <tr>
+                <tr className="border-b border-gray-100 bg-gray-50">
                   <td className="px-3 py-1.5 border border-gray-300 font-medium">CPU/Memory Usage</td>
                   <td className="px-3 py-1.5 border border-gray-300 text-gray-600">Resource consumption during execution</td>
                 </tr>
@@ -197,7 +197,7 @@ const ResultsSection: React.FC = () => {
           </div>
         </div>
         <p className="text-sm text-gray-600 italic mt-4">
-          Table 1: Evaluation metrics organized by category</p>
+          Table 4: Evaluation metrics organized by category</p>
       </div>
 
       {/* ============================================ */}
@@ -206,7 +206,7 @@ const ResultsSection: React.FC = () => {
       <div className="text-gray-700 leading-relaxed space-y-4 mb-8">
         <h3 className="text-xl font-semibold text-gray-800 mb-3">Evaluation Prompts</h3>
         <p className='text-justify mb-4'>
-          We designed a diverse set of 23 prompts to comprehensively evaluate system capabilities. For each prompt in Table 2 below, we measured all metrics from Table 1 across multiple input videos to ensure statistical robustness.
+          We designed a diverse set of 23 prompts to comprehensively evaluate system capabilities. For each prompt in Table 5 below, we measured all metrics from Table 4 across multiple input videos to ensure statistical robustness.
         </p>
       </div>
 
@@ -343,7 +343,11 @@ const ResultsSection: React.FC = () => {
   </table>
 </div>
       <p className="text-sm text-gray-600 italic mb-8">
-        Table 2: Evaluation prompts categorized by test dimension
+        Table 5: Evaluation prompts categorized by test dimension
+      </p>
+
+      <p className="text-justify mb-6 text-gray-700">
+        To gather all these metrics, we built a simple CLI tool called <code className="bg-gray-100 px-1 rounded">run_metrics.py</code>. It feeds test prompts into the pipeline, measures and logs every result into a JSON file.
       </p>
 
       <div className="text-gray-700 leading-relaxed space-y-6">
@@ -353,43 +357,45 @@ const ResultsSection: React.FC = () => {
         {/* ============================================ */}
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-gray-800 mb-3">Results</h3>
-          
-  <div className="flex flex-col md:flex-row justify-center items-start gap-8 my-8 w-full">
+
+
+   <div className="w-full">
+   <p className="text-justify mb-3">
+      For both Figure 6 and Figure 7 below, note that "Vid 1", "Vid 2", and "Vid 3" correspond to a set of videos arranged by increasing complexity, ranging from single-person, simple scenes to challenging scenarios with multiple people, overlapping movement, and background noise. The specific type of complexity (such as visual clutter or overlapping speech) depends on the scenario being tested.
+    </p>  
+    </div>
 
     {/* Success Rate - double width */}
-    <div className="flex flex-col items-center w-full md:w-2/3" style={{ flex: '0 0 71%' }}>
+    <div className="flex flex-col items-center w-full">
       <img
         src={successRate}
         alt="Success Rate"
-        className="w-full max-w-3xl rounded-lg object-contain"
+        className="w-full max-w-xl rounded-lg object-contain"
       />
       <p className="text-sm text-gray-600 italic mt-2 text-center">
-        Figure 4: Robustness Metrics per Video category.
+        Figure 6: Robustness Metrics per Video category.
       </p>
     </div>
-    {/* Failure Points Heatmap - half width */}
-    <div className="flex flex-col items-center w-full md:w-1/2" style={{ flex: '0 0 29%' }}>
+    <div className="w-full">
+    <p className="text-justify mb-3">
+      (Fig. 6) The "pipeline success rate" in this context means that the pipeline completed all stages without a single error or the need for any retries. The measured overall success rate before any retry attempts is 59%. When the recovery (retry) loop is triggered, an additional average recovery success rate of 24% is observed. As expected, all three success rates systematically decrease as scenario complexity increases.
+    </p>
+  </div>
+        {/* Failure Points Heatmap - half width */}
+        <div className="flex flex-col items-center w-full">
       <img
         src={fpHeatmap}
         alt="Failure Points Heatmap"
-        className="w-full max-w-md rounded-lg object-contain"
+        className="w-full max-w-sm rounded-lg object-contain"
       />
       <p className="text-sm text-gray-600 italic mt-2 text-center">
-        Figure 5: Failure Points Heatmap.
+        Figure 7: Failure Points Heatmap.
       </p>
-    </div>
     </div>
     <div>
   <div className="w-full">
-    <h4 className="text-base font-semibold text-gray-700 mb-1">Interpretation of Figures 4 and 5</h4>
     <p className="text-justify mb-3">
-      For both Figure 4 and Figure 5, note that "Vid 1", "Vid 2", and "Vid 3" correspond to a set of videos arranged by increasing complexity, ranging from single-person, simple scenes to challenging scenarios with multiple people, overlapping movement, and background noise. The specific type of complexity (such as visual clutter or overlapping speech) depends on the scenario being tested.
-    </p>
-    <p className="text-justify mb-3">
-      <strong>Figure 4:</strong> The "pipeline success rate" in this context means that the pipeline completed all stages without a single error or the need for any retries. The measured overall success rate before any retry attempts is 59%. When the recovery (retry) loop is triggered, an additional average recovery success rate of 24% is observed. As expected, all three success rates systematically decrease as scenario complexity increases.
-    </p>
-    <p className="text-justify mb-3">
-      <strong>Figure 5:</strong> The Failure Points Heatmap highlights the tools where the privacy pipeline struggled and where errors cluster by tool type and scenario complexity. In the most complex case ("Vid 3"), the <code>mute_keywords</code> tool struggled the most and frequently failed verification. These failures are primarily due to overlapping speech making automatic transcription more challenging, and the LLM’s difficulty in consistently understanding context and muting precisely the correct portions of the audio.
+      (Fig. 7) The Failure Points Heatmap highlights the tools where the privacy pipeline struggled and where errors cluster by tool type and scenario complexity. In the most complex case ("Vid 3"), the <code>mute_keywords</code> tool struggled the most and frequently failed verification. These failures are primarily due to overlapping speech making automatic transcription more challenging, and the LLM’s difficulty in consistently understanding context and muting precisely the correct portions of the audio.
     </p>
   </div>
 
@@ -401,27 +407,16 @@ const ResultsSection: React.FC = () => {
       />
       </div>
       <p className="text-sm text-gray-600 italic mt-2 text-center mb-3">
-        Figure 6: Comparison of time spent in each stage between rigid traditional pipelines and adaptive LLM-based approach.
+        Figure 8: Comparison of time spent in each stage between rigid traditional pipelines and adaptive LLM-based approach.
       </p>
       <p className="text-justify">
-        Figure 6 shows that our LLM-based system adds ~10.2s overhead compared to traditional pipelines.
+        Figure 8 shows that our LLM-based system adds ~10.2s overhead compared to traditional pipelines.
       </p>
       <p className="text-justify mb-3">
         The overhead is primarily due to the additional time spent in the LLM calls for planning, tool generation, and validation (35% on average). While some 8% are spent in error recovery, which is a feature that the traditional pipeline does not have.
       </p>
 
   </div>
-        </div>
-        {/* ============================================ */}
-        {/* SECTION: Ablation Studies */}
-        {/* ============================================ */}
-        <div className="space-y-4">
-          <h3 className="text-xl font-semibold text-gray-800 mb-3">Ablation Studies</h3>
-          
-          <p className='text-justify'>
-            [TODO: Introduction to ablation studies - what components were tested in isolation]
-          </p>
-
         </div>
 
       </div>

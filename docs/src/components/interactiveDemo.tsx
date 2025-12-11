@@ -359,10 +359,10 @@ const InteractiveDemo: React.FC = () => {
           </h3>
           <div className="grid gap-3">
             {scenarios.map((scenario) => (
-              <button
+              <div
                 key={scenario.id}
                 onClick={() => runDemo(scenario)}
-                className="group p-4 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600 hover:border-emerald-500/50 rounded-lg text-left transition-all duration-200"
+                className="cursor-pointer group p-4 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-600 hover:border-emerald-500/50 rounded-lg text-left transition-all duration-200"
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -377,7 +377,7 @@ const InteractiveDemo: React.FC = () => {
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-500 group-hover:text-emerald-400 transition-colors" />
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         </div>
@@ -489,7 +489,7 @@ const InteractiveDemo: React.FC = () => {
             <div className="flex justify-center pt-4">
               <button
                 onClick={reset}
-                className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded-lg transition-colors flex items-center gap-2"
+                className="px-6 py-2 bg-slate-700 hover:bg-slate-600 dark:text-slate-200 rounded-lg transition-colors flex items-center gap-2"
               >
                 <Play className="w-4 h-4" />
                 Try Another Scenario

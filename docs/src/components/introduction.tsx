@@ -92,7 +92,7 @@ const IntroductionSection: React.FC = () => {
         <div>
           <h3 className="text-xl font-semibold text-gray-800 mb-3">Challenges</h3>
           <p className='text-justify'>
-            TODO
+            Building this system presents several key challenges. First, there is an inherent tension between LLM flexibility and safety guarantees: allowing the agent to generate arbitrary code enables adaptability but introduces risks of incorrect or unsafe behavior that must be mitigated through sandboxing and verification. Second, LLM inference adds latency overhead that conflicts with real-time processing requirements, particularly for live audio/video streams where delays must be minimized. Third, detection accuracy degrades in challenging real-world conditions such as poor lighting, motion blur, facial occlusion, and overlapping speech from multiple speakers. Fourth, ensuring that privacy policies are actually being respected is inherently difficult in a fully automated system because the agent must judge compliance from the processed output alone, without human inspection, making reliable verification extremely challenging. Finally, LLM-generated tools have unpredictable quality; code that compiles may still fail at runtime due to edge cases the model failed to anticipate.
           </p>
         </div>
 
